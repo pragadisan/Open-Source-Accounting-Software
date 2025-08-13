@@ -10,14 +10,14 @@ Open Source Accounting Software is an interactive and responsive accounting dash
 **Customizable Typography:** Change the font family and text boldness on the fly.\
 **Drag-and-Drop:** Rearrange the cards on the dashboard to customize your view.\
 **Financial Widgets:** Displays example data for Profit & Loss, Balance Sheet, Cash Flow, and more.\
-**Dynamic Charts:** Includes a responsive line chart using Recharts to visualize sales data.\
+**Dynamic Charts:** Includes a responsive line chart using Recharts to visualize sales data.
 
 ## 🛠️ Technologies Used
 **React:** A JavaScript library for building user interfaces.\
 **Vite:** A fast and lightweight build tool for modern web projects.\
 **Tailwind CSS:** A utility-first CSS framework for rapid styling.\
 **Recharts:** A composable charting library built with React and D3.\
-**Lucide React:** A collection of beautiful and customizable open-source icons.\
+**Lucide React:** A collection of beautiful and customizable open-source icons.
 
 ## ⚙️ Setup and Installation
 Follow these steps to get the project running on your local machine.
@@ -30,12 +30,12 @@ Create a new Vite project:
 ### `npm create vite@latest osas-alpha -- --template react`
 ### `cd osas-alpha`
 
-Replace the project files. Copy the index.html, package.json, and src/ folder contents from this project into your new osas-alpha directory. \
+Replace the project files. Copy the index.html, package.json, and src/ folder contents from this project into your new osas-alpha directory. 
 
-**Install dependencies:** \
+**Install dependencies:** 
 ### `npm install`
 
-**Run the development server:** \
+**Run the development server:** 
 ### `npm run dev`
 
 
