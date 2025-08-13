@@ -4,6 +4,10 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+
+do we need to change from create react to a framework or build tools from this?
+https://react.dev/blog/2025/02/14/sunsetting-create-react-app
+
 ## Available Scripts
 
 In the project directory, you can run:
