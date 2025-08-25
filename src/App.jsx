@@ -19,7 +19,7 @@ const permanentDirectExpense = [
 ];
 const allPermanentTransactions = [...permanentSales, ...permanentPurchases, ...permanentDirectExpense].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-// --- Confirmation Modal ---
+// --- Confirmation modal / screen - soeraaa? ---
 const ConfirmationModal = ({ isOpen, onConfirm, onCancel, theme }) => {
     if (!isOpen) return null;
 
@@ -33,7 +33,7 @@ const ConfirmationModal = ({ isOpen, onConfirm, onCancel, theme }) => {
                     <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500" />
                     <h3 className="mt-4 text-lg font-semibold">Discard Changes?</h3>
                     <p className="mt-2 text-sm text-gray-400">
-                        You have unsaved changes. Are you sure you want to discard them and go back?
+                        You have unsaved changes. Are you sure you want to discard them?
                     </p>
                 </div>
                 <div className={`flex justify-end p-4 space-x-3 border-t rounded-b-xl ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}>
@@ -455,7 +455,7 @@ const PeriodSelector = ({ theme }) => {
 // The root component of the application.
 const App = () => {
   const [theme, setTheme] = useState('black');
-  const [boldnessLevel, setBoldnessLevel] = useState(3);
+  const [boldnessLevel, setBoldnessLevel] = useState(2);
   const boldnessClasses = ['font-normal', 'font-medium', 'font-semibold', 'font-bold', 'font-extrabold'];
   const [activeScreen, setActiveScreen] = useState('dashboard');
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
@@ -559,7 +559,7 @@ const App = () => {
   const selectFont = (index) => { setFontIndex(index); setIsFontDropdownOpen(false); };
   const getBackgroundColor = () => theme === 'light' ? 'bg-[#FFF3E7]' : (theme === 'dark' ? 'bg-slate-900' : 'bg-zinc-950');
   const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
-  const getCardClasses = (isBeingDragged, isRearranging, isClickable) => `backdrop-blur-sm border shadow-lg rounded-md transition-all duration-300 ease-in-out p-6 ${isBeingDragged ? 'opacity-50 z-10' : ''} ${isRearranging ? 'cursor-grab animate-pulse-once' : (isClickable ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl ' + (theme === 'light' ? 'hover:bg-gray-200/50 hover:text-gray-900' : 'hover:bg-white/10 hover:text-white') : '')} ${theme === 'light' ? 'bg-white/50 border-gray-200' : 'bg-white/5 border-white/10'}`;
+  const getCardClasses = (isBeingDragged, isRearranging, isClickable) => `backdrop-blur-sm border shadow-lg rounded-sm transition-all duration-300 ease-in-out p-6 ${isBeingDragged ? 'opacity-50 z-10' : ''} ${isRearranging ? 'cursor-grab animate-pulse-once' : 'hover:scale-[1.02] hover:shadow-xl ' + (theme === 'light' ? 'hover:bg-gray-200/50 hover:text-gray-900' : 'hover:bg-white/10 hover:text-white')} ${isClickable ? 'cursor-pointer' : ''} ${theme === 'light' ? 'bg-white/50 border-gray-200' : 'bg-white/5 border-white/10'}`;
   const FinancialValue = ({ label, value, valueColor = getTextColor() }) => (<div className="flex justify-between items-center py-1"><span className={theme === 'light' ? "text-gray-600" : "text-gray-400"}>{label}</span><span className={`font-semibold ${valueColor}`}>₹{value.toLocaleString()}</span></div>);
   const EntryItem = ({ type, reference, date, amount, user }) => (
     <tr className={`border-b ${theme === 'light' ? "border-gray-200" : "border-white/10"} last:border-b-0`}>
