@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Sun, Moon, Bold, Type, ChevronDown, LayoutGrid, X, Plus, Trash2, Search, Save, PlusCircle, Menu, ChevronsLeft, ShoppingCart, DollarSign, BookOpen, ChevronLeft, ChevronRight, Calculator, Banknote, TrendingUp, FileText, Briefcase, Users } from 'lucide-react';
+import { Sun, Moon, Bold, Type, ChevronDown, LayoutGrid, X, Plus, Trash2, Search, Save, PlusCircle, Menu, ChevronsLeft, ShoppingCart, DollarSign, BookOpen, ChevronLeft, ChevronRight, Calculator, Banknote, TrendingUp, FileText, Briefcase, Users, AlertTriangle } from 'lucide-react';
 
 // --- Static Data ---
 // Permanent storage for transactions.
@@ -19,30 +19,59 @@ const permanentDirectExpense = [
 ];
 const allPermanentTransactions = [...permanentSales, ...permanentPurchases, ...permanentDirectExpense].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+// --- Confirmation Modal ---
+const ConfirmationModal = ({ isOpen, onConfirm, onCancel, theme }) => {
+    if (!isOpen) return null;
+
+    const getBackgroundColor = () => theme === 'light' ? 'bg-white' : (theme === 'dark' ? 'bg-slate-800' : 'bg-zinc-900');
+    const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <div className={`w-full max-w-md m-auto flex flex-col rounded-xl shadow-2xl ${getBackgroundColor()} ${getTextColor()}`}>
+                <div className="p-6 text-center">
+                    <AlertTriangle className="mx-auto h-12 w-12 text-yellow-500" />
+                    <h3 className="mt-4 text-lg font-semibold">Discard Changes?</h3>
+                    <p className="mt-2 text-sm text-gray-400">
+                        You have unsaved changes. Are you sure you want to discard them and go back?
+                    </p>
+                </div>
+                <div className={`flex justify-end p-4 space-x-3 border-t rounded-b-xl ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}>
+                    <button onClick={onCancel} className={`px-4 py-2 rounded-md font-semibold transition-colors ${theme === 'light' ? 'bg-gray-200 hover:bg-gray-300' : 'bg-gray-600 hover:bg-gray-500'}`}>
+                        Cancel
+                    </button>
+                    <button onClick={onConfirm} className="px-4 py-2 rounded-md font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors">
+                        Discard
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
 // --- Generic Placeholder Page ---
 // A reusable page for new features.
 const GenericPage = ({ title, onClose, theme, children }) => {
   const getBackgroundColor = () => theme === 'light' ? 'bg-white' : (theme === 'dark' ? 'bg-slate-800' : 'bg-zinc-900');
   const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${theme === 'light' ? 'bg-gray-500/50' : 'bg-black/50'} backdrop-blur-sm`}>
-       <div className={`w-full max-w-6xl h-[95vh] m-auto flex flex-col rounded-xl shadow-2xl ${getBackgroundColor()} ${getTextColor()}`}>
-        <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
-          <h2 className="text-xl font-bold">{title}</h2>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button>
-        </header>
-        <div className="flex-grow p-6 overflow-y-auto">
-            {children ? children : (
-                <div className="flex items-center justify-center h-full">
-                    <div className="text-center">
-                        <h3 className="text-2xl font-bold">Coming Soon</h3>
-                        <p className="text-gray-500 mt-2">This page is under construction.</p>
-                    </div>
-                </div>
-            )}
-        </div>
-      </div>
-    </div>
+    <div className={`w-full h-full flex flex-col ${getBackgroundColor()} ${getTextColor()}`}>
+       <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
+         <h2 className="text-xl font-bold">{title}</h2>
+         <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button>
+       </header>
+       <div className="flex-grow p-6 overflow-y-auto">
+           {children ? children : (
+               <div className="flex items-center justify-center h-full">
+                   <div className="text-center">
+                       <h3 className="text-2xl font-bold">Coming Soon</h3>
+                       <p className="text-gray-500 mt-2">This page is under construction.</p>
+                   </div>
+               </div>
+           )}
+       </div>
+     </div>
   );
 };
 
@@ -116,7 +145,7 @@ const PurchaseJournal = ({ onClose, theme }) => {
   const removeItem = (index) => setPurchase(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
   const handleSupplierSearch = (e) => {
       setSupplierSearch(e.target.value);
-      if (e.target.value) { setIsSupplierDropdownOpen(true); setSupplierResults(mockSuppliers.filter(s => s.name.toLowerCase().includes(e.target.value.toLowerCase()))); } 
+      if (e.target.value) { setIsSupplierDropdownOpen(true); setSupplierResults(mockSuppliers.filter(s => s.name.toLowerCase().includes(e.target.value.toLowerCase()))); }
       else { setIsSupplierDropdownOpen(false); setSupplierResults([]); }
   };
   const selectSupplier = (supplier) => {
@@ -138,32 +167,30 @@ const PurchaseJournal = ({ onClose, theme }) => {
   const getInputClasses = () => `w-full px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === 'light' ? 'bg-gray-100 border border-gray-300 text-gray-900' : 'bg-gray-700 border border-gray-600 text-gray-100'}`;
   const getLabelClasses = () => `block text-sm font-medium mb-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`;
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${theme === 'light' ? 'bg-gray-500/50' : 'bg-black/50'} backdrop-blur-sm`}>
-      <div className={`w-full max-w-6xl h-[95vh] flex flex-col rounded-xl shadow-2xl ${getBackgroundColor()} ${getTextColor()}`}>
-        <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><h2 className="text-xl font-bold">New Purchase Journal</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button></header>
-        <div className="flex-grow p-6 overflow-y-auto">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                <div className="md:col-span-2 space-y-4">
-                    <div className="relative"><label className={getLabelClasses()}>Supplier</label><div className="relative"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={supplierSearch} onChange={handleSupplierSearch} placeholder="Search or Add a Supplier" className={`${getInputClasses()} pl-10`} /></div>
-                        {isSupplierDropdownOpen && supplierResults.length > 0 && (<div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${theme === 'light' ? 'bg-white' : 'bg-gray-800'} border ${theme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>{supplierResults.map(s => (<div key={s.id} onClick={() => selectSupplier(s)} className={`px-4 py-2 cursor-pointer hover:bg-blue-500/20`}><p className="font-semibold">{s.name}</p><p className="text-sm text-gray-400">{s.address}</p></div>))}</div>)}
-                    </div>
-                     <div><label className={getLabelClasses()}>Supplier Address</label><textarea name="supplierAddress" value={purchase.supplierAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div>
-                </div>
-                <div className="space-y-4">
-                    <div><label className={getLabelClasses()}>Bill No.</label><input type="text" name="billNo" value={purchase.billNo} onChange={handleJournalChange} className={getInputClasses()} /></div>
-                    <div className="grid grid-cols-2 gap-4"><div><label className={getLabelClasses()}>Bill Date</label><input type="date" name="billDate" value={purchase.billDate} onChange={handleJournalChange} className={getInputClasses()} /></div><div><label className={getLabelClasses()}>Due Date</label><input type="date" name="dueDate" value={purchase.dueDate} onChange={handleJournalChange} className={getInputClasses()} /></div></div>
-                    <div><label className={getLabelClasses()}>Place of Supply (State)</label><input type="text" name="placeOfSupply" value={purchase.placeOfSupply} onChange={handleJournalChange} placeholder="e.g., Tamil Nadu" className={getInputClasses()} /></div>
-                </div>
-            </div>
-            <div className="overflow-x-auto"><table className="w-full text-left"><thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}><tr><th className="p-3 font-semibold">#</th><th className="p-3 font-semibold w-2/5">Item Details</th><th className="p-3 font-semibold">HSN/SAC</th><th className="p-3 font-semibold">Qty</th><th className="p-3 font-semibold">Rate</th><th className="p-3 font-semibold">Amount</th><th className="p-3 font-semibold"></th></tr></thead><tbody>{purchase.items.map((item, index) => (<tr key={index} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><td className="p-2">{index + 1}</td><td className="p-2"><select name="productId" value={item.productId} onChange={(e) => handleItemChange(index, e)} className={`${getInputClasses()} mb-1`}><option value="">Select Product/Service</option>{mockProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><input type="text" name="name" placeholder="Description" value={item.name} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="text" name="hsn" value={item.hsn} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="qty" value={item.qty} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="rate" value={item.rate} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2 text-right pr-4 font-medium">₹{item.amount.toFixed(2)}</td><td className="p-2"><button onClick={() => removeItem(index)} className="p-2 text-red-500 hover:text-red-400"><Trash2 size={18} /></button></td></tr>))}</tbody></table></div>
-            <button onClick={addItem} className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-500 hover:text-blue-400"><PlusCircle size={18} /> Add another line</button>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-dashed">
-                <div><label className={getLabelClasses()}>Notes / Terms & Conditions</label><textarea name="notes" value={purchase.notes} onChange={handleJournalChange} rows="4" className={getInputClasses()}></textarea></div>
-                <div className="space-y-2"><div className="flex justify-between items-center"><span className="font-medium">Sub Total:</span><span>₹{purchase.subTotal.toFixed(2)}</span></div>{purchase.cgst > 0 && <div className="flex justify-between items-center"><span>CGST:</span><span>₹{purchase.cgst.toFixed(2)}</span></div>}{purchase.sgst > 0 && <div className="flex justify-between items-center"><span>SGST:</span><span>₹{purchase.sgst.toFixed(2)}</span></div>}{purchase.igst > 0 && <div className="flex justify-between items-center"><span>IGST:</span><span>₹{purchase.igst.toFixed(2)}</span></div>}<div className={`flex justify-between items-center text-xl font-bold pt-2 border-t ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}><span>Total:</span><span>₹{purchase.grandTotal.toFixed(2)}</span></div></div>
-            </div>
-        </div>
-        <footer className={`flex items-center justify-end p-4 space-x-3 border-t ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}><button onClick={onClose} className={`px-6 py-2 rounded-md font-semibold transition-colors ${theme === 'light' ? 'bg-gray-200 hover:bg-gray-300' : 'bg-gray-600 hover:bg-gray-500'}`}>Cancel</button><button className="flex items-center gap-2 px-6 py-2 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"><Save size={18} /> Save Journal</button></footer>
+    <div className={`w-full h-full flex flex-col ${getBackgroundColor()} ${getTextColor()}`}>
+      <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><h2 className="text-xl font-bold">New Purchase Journal</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button></header>
+      <div className="flex-grow p-6 overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="md:col-span-2 space-y-4">
+                  <div className="relative"><label className={getLabelClasses()}>Supplier</label><div className="relative"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={supplierSearch} onChange={handleSupplierSearch} placeholder="Search or Add a Supplier" className={`${getInputClasses()} pl-10`} /></div>
+                      {isSupplierDropdownOpen && supplierResults.length > 0 && (<div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${theme === 'light' ? 'bg-white' : 'bg-gray-800'} border ${theme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>{supplierResults.map(s => (<div key={s.id} onClick={() => selectSupplier(s)} className={`px-4 py-2 cursor-pointer hover:bg-blue-500/20`}><p className="font-semibold">{s.name}</p><p className="text-sm text-gray-400">{s.address}</p></div>))}</div>)}
+                  </div>
+                   <div><label className={getLabelClasses()}>Supplier Address</label><textarea name="supplierAddress" value={purchase.supplierAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div>
+              </div>
+              <div className="space-y-4">
+                  <div><label className={getLabelClasses()}>Bill No.</label><input type="text" name="billNo" value={purchase.billNo} onChange={handleJournalChange} className={getInputClasses()} /></div>
+                  <div className="grid grid-cols-2 gap-4"><div><label className={getLabelClasses()}>Bill Date</label><input type="date" name="billDate" value={purchase.billDate} onChange={handleJournalChange} className={getInputClasses()} /></div><div><label className={getLabelClasses()}>Due Date</label><input type="date" name="dueDate" value={purchase.dueDate} onChange={handleJournalChange} className={getInputClasses()} /></div></div>
+                  <div><label className={getLabelClasses()}>Place of Supply (State)</label><input type="text" name="placeOfSupply" value={purchase.placeOfSupply} onChange={handleJournalChange} placeholder="e.g., Tamil Nadu" className={getInputClasses()} /></div>
+              </div>
+          </div>
+          <div className="overflow-x-auto"><table className="w-full text-left"><thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}><tr><th className="p-3 font-semibold">#</th><th className="p-3 font-semibold w-2/5">Item Details</th><th className="p-3 font-semibold">HSN/SAC</th><th className="p-3 font-semibold">Qty</th><th className="p-3 font-semibold">Rate</th><th className="p-3 font-semibold">Amount</th><th className="p-3 font-semibold"></th></tr></thead><tbody>{purchase.items.map((item, index) => (<tr key={index} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><td className="p-2">{index + 1}</td><td className="p-2"><select name="productId" value={item.productId} onChange={(e) => handleItemChange(index, e)} className={`${getInputClasses()} mb-1`}><option value="">Select Product/Service</option>{mockProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><input type="text" name="name" placeholder="Description" value={item.name} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="text" name="hsn" value={item.hsn} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="qty" value={item.qty} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="rate" value={item.rate} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2 text-right pr-4 font-medium">₹{item.amount.toFixed(2)}</td><td className="p-2"><button onClick={() => removeItem(index)} className="p-2 text-red-500 hover:text-red-400"><Trash2 size={18} /></button></td></tr>))}</tbody></table></div>
+          <button onClick={addItem} className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-500 hover:text-blue-400"><PlusCircle size={18} /> Add another line</button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-dashed">
+              <div><label className={getLabelClasses()}>Notes / Terms & Conditions</label><textarea name="notes" value={purchase.notes} onChange={handleJournalChange} rows="4" className={getInputClasses()}></textarea></div>
+              <div className="space-y-2"><div className="flex justify-between items-center"><span className="font-medium">Sub Total:</span><span>₹{purchase.subTotal.toFixed(2)}</span></div>{purchase.cgst > 0 && <div className="flex justify-between items-center"><span>CGST:</span><span>₹{purchase.cgst.toFixed(2)}</span></div>}{purchase.sgst > 0 && <div className="flex justify-between items-center"><span>SGST:</span><span>₹{purchase.sgst.toFixed(2)}</span></div>}{purchase.igst > 0 && <div className="flex justify-between items-center"><span>IGST:</span><span>₹{purchase.igst.toFixed(2)}</span></div>}<div className={`flex justify-between items-center text-xl font-bold pt-2 border-t ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}><span>Total:</span><span>₹{purchase.grandTotal.toFixed(2)}</span></div></div>
+          </div>
       </div>
+      <footer className={`flex items-center justify-end p-4 space-x-3 border-t ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}><button onClick={onClose} className={`px-6 py-2 rounded-md font-semibold transition-colors ${theme === 'light' ? 'bg-gray-200 hover:bg-gray-300' : 'bg-gray-600 hover:bg-gray-500'}`}>Cancel</button><button className="flex items-center gap-2 px-6 py-2 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"><Save size={18} /> Save Journal</button></footer>
     </div>
   );
 };
@@ -174,10 +201,42 @@ const PurchaseJournal = ({ onClose, theme }) => {
 const SalesJournal = ({ onClose, theme }) => {
   const mockCustomers = [ { id: 1, name: 'Innovate Corp', address: '123 Tech Park, Silicon Valley', gst: '29ABCDE1234F1Z5' }, { id: 2, name: 'Global Traders', address: '456 Commerce St, New York', gst: '07HIJKL5678M2N9' }, { id: 3, name: 'Sunrise Solutions (Salem)', address: '789 Industrial Estate, Salem, Tamil Nadu', gst: '33PQRST9101U3V4' }, ];
   const mockProducts = [ { id: 101, name: 'Cloud Service Subscription', hsn: '998313', rate: 5000 }, { id: 102, name: 'Software Development', hsn: '998314', rate: 12000 }, { id: 103, name: 'Hardware Supply', hsn: '8471', rate: 25000 }, ];
-  const [journal, setJournal] = useState({ invoiceNo: 'INV-00125', invoiceDate: new Date().toISOString().split('T')[0], dueDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString().split('T')[0], customer: null, billingAddress: '', shippingAddress: '', placeOfSupply: '', items: [{ productId: '', name: '', hsn: '', qty: 1, rate: 0, amount: 0, taxRate: 18 }], notes: 'Thank you for your business.', subTotal: 0, cgst: 0, sgst: 0, igst: 0, grandTotal: 0, });
+  
+  const initialJournalState = { invoiceNo: 'INV-00125', invoiceDate: new Date().toISOString().split('T')[0], dueDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString().split('T')[0], customer: null, billingAddress: '', shippingAddress: '', placeOfSupply: '', items: [{ productId: '', name: '', hsn: '', qty: 1, rate: 0, amount: 0, taxRate: 18 }], notes: 'Thank you for your business.', subTotal: 0, cgst: 0, sgst: 0, igst: 0, grandTotal: 0, };
+  const [journal, setJournal] = useState(initialJournalState);
+  
   const [customerSearch, setCustomerSearch] = useState('');
   const [customerResults, setCustomerResults] = useState([]);
   const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const customerInputRef = useRef(null);
+
+  useEffect(() => {
+    customerInputRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    setIsDirty(JSON.stringify(journal) !== JSON.stringify(initialJournalState));
+  }, [journal, initialJournalState]);
+
+  const handleClose = () => {
+    if (isDirty) {
+      setShowConfirmation(true);
+    } else {
+      onClose();
+    }
+  };
+
+  const handleConfirmClose = () => {
+    setShowConfirmation(false);
+    onClose();
+  };
+
+  const handleCancelClose = () => {
+    setShowConfirmation(false);
+  };
+
   const handleJournalChange = (e) => { const { name, value } = e.target; setJournal(prev => ({ ...prev, [name]: value })); };
   const handleItemChange = (index, e) => {
     const { name, value } = e.target; const items = [...journal.items]; items[index][name] = value;
@@ -192,7 +251,7 @@ const SalesJournal = ({ onClose, theme }) => {
   const removeItem = (index) => setJournal(prev => ({ ...prev, items: journal.items.filter((_, i) => i !== index) }));
   const handleCustomerSearch = (e) => {
       setCustomerSearch(e.target.value);
-      if (e.target.value) { setIsCustomerDropdownOpen(true); setCustomerResults(mockCustomers.filter(c => c.name.toLowerCase().includes(e.target.value.toLowerCase()))); } 
+      if (e.target.value) { setIsCustomerDropdownOpen(true); setCustomerResults(mockCustomers.filter(c => c.name.toLowerCase().includes(e.target.value.toLowerCase()))); }
       else { setIsCustomerDropdownOpen(false); setCustomerResults([]); }
   };
   const selectCustomer = (customer) => { setJournal(prev => ({ ...prev, customer, billingAddress: customer.address, shippingAddress: customer.address, placeOfSupply: customer.address.split(',').pop().trim() })); setCustomerSearch(customer.name); setIsCustomerDropdownOpen(false); };
@@ -206,31 +265,39 @@ const SalesJournal = ({ onClose, theme }) => {
     const grandTotal = subTotal + cgst + sgst + igst;
     setJournal(prev => ({ ...prev, subTotal, cgst, sgst, igst, grandTotal }));
   }, [journal.items, journal.placeOfSupply]);
+  
   const getBackgroundColor = () => theme === 'light' ? 'bg-white' : (theme === 'dark' ? 'bg-slate-800' : 'bg-zinc-900');
   const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
   const getInputClasses = () => `w-full px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === 'light' ? 'bg-gray-100 border border-gray-300 text-gray-900' : 'bg-gray-700 border border-gray-600 text-gray-100'}`;
   const getLabelClasses = () => `block text-sm font-medium mb-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`;
+  
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${theme === 'light' ? 'bg-gray-500/50' : 'bg-black/50'} backdrop-blur-sm`}>
-      <div className={`w-full max-w-6xl h-[95vh] flex flex-col rounded-xl shadow-2xl ${getBackgroundColor()} ${getTextColor()}`}>
-        <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><h2 className="text-xl font-bold">New Sales Journal</h2><button onClick={onClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button></header>
-        <div className="flex-grow p-6 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <div className="md:col-span-2 space-y-4">
-              <div className="relative"><label className={getLabelClasses()}>Customer</label><div className="relative"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input type="text" value={customerSearch} onChange={handleCustomerSearch} placeholder="Search or Add a Customer" className={`${getInputClasses()} pl-10`} /></div>
-                {isCustomerDropdownOpen && customerResults.length > 0 && (<div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${theme === 'light' ? 'bg-white' : 'bg-gray-800'} border ${theme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>{customerResults.map(c => (<div key={c.id} onClick={() => selectCustomer(c)} className={`px-4 py-2 cursor-pointer hover:bg-blue-500/20`}><p className="font-semibold">{c.name}</p><p className="text-sm text-gray-400">{c.address}</p></div>))}</div>)}
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className={getLabelClasses()}>Billing Address</label><textarea name="billingAddress" value={journal.billingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div><div><label className={getLabelClasses()}>Shipping Address</label><textarea name="shippingAddress" value={journal.shippingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div></div>
+    <>
+    <ConfirmationModal
+        isOpen={showConfirmation}
+        onConfirm={handleConfirmClose}
+        onCancel={handleCancelClose}
+        theme={theme}
+    />
+    <div className={`w-full h-full flex flex-col ${getBackgroundColor()} ${getTextColor()}`}>
+      <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><h2 className="text-xl font-bold">New Sales Journal</h2><button onClick={handleClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button></header>
+      <div className="flex-grow p-6 overflow-y-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <div className="md:col-span-2 space-y-4">
+            <div className="relative"><label className={getLabelClasses()}>Customer</label><div className="relative"><Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" /><input ref={customerInputRef} type="text" value={customerSearch} onChange={handleCustomerSearch} placeholder="Search or Add a Customer" className={`${getInputClasses()} pl-10`} /></div>
+              {isCustomerDropdownOpen && customerResults.length > 0 && (<div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${theme === 'light' ? 'bg-white' : 'bg-gray-800'} border ${theme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>{customerResults.map(c => (<div key={c.id} onClick={() => selectCustomer(c)} className={`px-4 py-2 cursor-pointer hover:bg-blue-500/20`}><p className="font-semibold">{c.name}</p><p className="text-sm text-gray-400">{c.address}</p></div>))}</div>)}
             </div>
-            <div className="space-y-4"><div><label className={getLabelClasses()}>Invoice No.</label><input type="text" name="invoiceNo" value={journal.invoiceNo} onChange={handleJournalChange} className={getInputClasses()} /></div><div className="grid grid-cols-2 gap-4"><div><label className={getLabelClasses()}>Invoice Date</label><input type="date" name="invoiceDate" value={journal.invoiceDate} onChange={handleJournalChange} className={getInputClasses()} /></div><div><label className={getLabelClasses()}>Due Date</label><input type="date" name="dueDate" value={journal.dueDate} onChange={handleJournalChange} className={getInputClasses()} /></div></div><div><label className={getLabelClasses()}>Place of Supply (State)</label><input type="text" name="placeOfSupply" value={journal.placeOfSupply} onChange={handleJournalChange} placeholder="e.g., Tamil Nadu" className={getInputClasses()} /></div></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label className={getLabelClasses()}>Billing Address</label><textarea name="billingAddress" value={journal.billingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div><div><label className={getLabelClasses()}>Shipping Address</label><textarea name="shippingAddress" value={journal.shippingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div></div>
           </div>
-          <div className="overflow-x-auto"><table className="w-full text-left"><thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}><tr><th className="p-3 font-semibold">#</th><th className="p-3 font-semibold w-2/5">Item Details</th><th className="p-3 font-semibold">HSN/SAC</th><th className="p-3 font-semibold">Qty</th><th className="p-3 font-semibold">Rate</th><th className="p-3 font-semibold">Amount</th><th className="p-3 font-semibold"></th></tr></thead><tbody>{journal.items.map((item, index) => (<tr key={index} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><td className="p-2">{index + 1}</td><td className="p-2"><select name="productId" value={item.productId} onChange={(e) => handleItemChange(index, e)} className={`${getInputClasses()} mb-1`}><option value="">Select Product/Service</option>{mockProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><input type="text" name="name" placeholder="Description" value={item.name} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="text" name="hsn" value={item.hsn} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="qty" value={item.qty} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="rate" value={item.rate} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2 text-right pr-4 font-medium">₹{item.amount.toFixed(2)}</td><td className="p-2"><button onClick={() => removeItem(index)} className="p-2 text-red-500 hover:text-red-400"><Trash2 size={18} /></button></td></tr>))}</tbody></table></div>
-          <button onClick={addItem} className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-500 hover:text-blue-400"><PlusCircle size={18} /> Add another line</button>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-dashed"><div><label className={getLabelClasses()}>Notes / Terms & Conditions</label><textarea name="notes" value={journal.notes} onChange={handleJournalChange} rows="4" className={getInputClasses()}></textarea></div><div className="space-y-2"><div className="flex justify-between items-center"><span className="font-medium">Sub Total:</span><span>₹{journal.subTotal.toFixed(2)}</span></div>{journal.cgst > 0 && (<div className="flex justify-between items-center"><span>CGST:</span><span>₹{journal.cgst.toFixed(2)}</span></div>)}{journal.sgst > 0 && (<div className="flex justify-between items-center"><span>SGST:</span><span>₹{journal.sgst.toFixed(2)}</span></div>)}{journal.igst > 0 && (<div className="flex justify-between items-center"><span>IGST:</span><span>₹{journal.igst.toFixed(2)}</span></div>)}<div className={`flex justify-between items-center text-xl font-bold pt-2 border-t ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}><span>Total:</span><span>₹{journal.grandTotal.toFixed(2)}</span></div></div></div>
+          <div className="space-y-4"><div><label className={getLabelClasses()}>Invoice No.</label><input type="text" name="invoiceNo" value={journal.invoiceNo} onChange={handleJournalChange} className={getInputClasses()} /></div><div className="grid grid-cols-2 gap-4"><div><label className={getLabelClasses()}>Invoice Date</label><input type="date" name="invoiceDate" value={journal.invoiceDate} onChange={handleJournalChange} className={getInputClasses()} /></div><div><label className={getLabelClasses()}>Due Date</label><input type="date" name="dueDate" value={journal.dueDate} onChange={handleJournalChange} className={getInputClasses()} /></div></div><div><label className={getLabelClasses()}>Place of Supply (State)</label><input type="text" name="placeOfSupply" value={journal.placeOfSupply} onChange={handleJournalChange} placeholder="e.g., Tamil Nadu" className={getInputClasses()} /></div></div>
         </div>
-        <footer className={`flex items-center justify-end p-4 space-x-3 border-t ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}><button onClick={onClose} className={`px-6 py-2 rounded-md font-semibold transition-colors ${theme === 'light' ? 'bg-gray-200 hover:bg-gray-300' : 'bg-gray-600 hover:bg-gray-500'}`}>Cancel</button><button className="flex items-center gap-2 px-6 py-2 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"><Save size={18} /> Save Journal</button></footer>
+        <div className="overflow-x-auto"><table className="w-full text-left"><thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}><tr><th className="p-3 font-semibold">#</th><th className="p-3 font-semibold w-2/5">Item Details</th><th className="p-3 font-semibold">HSN/SAC</th><th className="p-3 font-semibold">Qty</th><th className="p-3 font-semibold">Rate</th><th className="p-3 font-semibold">Amount</th><th className="p-3 font-semibold"></th></tr></thead><tbody>{journal.items.map((item, index) => (<tr key={index} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><td className="p-2">{index + 1}</td><td className="p-2"><select name="productId" value={item.productId} onChange={(e) => handleItemChange(index, e)} className={`${getInputClasses()} mb-1`}><option value="">Select Product/Service</option>{mockProducts.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><input type="text" name="name" placeholder="Description" value={item.name} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="text" name="hsn" value={item.hsn} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="qty" value={item.qty} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="rate" value={item.rate} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2 text-right pr-4 font-medium">₹{item.amount.toFixed(2)}</td><td className="p-2"><button onClick={() => removeItem(index)} className="p-2 text-red-500 hover:text-red-400"><Trash2 size={18} /></button></td></tr>))}</tbody></table></div>
+        <button onClick={addItem} className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-500 hover:text-blue-400"><PlusCircle size={18} /> Add another line</button>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-dashed"><div><label className={getLabelClasses()}>Notes / Terms & Conditions</label><textarea name="notes" value={journal.notes} onChange={handleJournalChange} rows="4" className={getInputClasses()}></textarea></div><div className="space-y-2"><div className="flex justify-between items-center"><span className="font-medium">Sub Total:</span><span>₹{journal.subTotal.toFixed(2)}</span></div>{journal.cgst > 0 && (<div className="flex justify-between items-center"><span>CGST:</span><span>₹{journal.cgst.toFixed(2)}</span></div>)}{journal.sgst > 0 && (<div className="flex justify-between items-center"><span>SGST:</span><span>₹{journal.sgst.toFixed(2)}</span></div>)}{journal.igst > 0 && (<div className="flex justify-between items-center"><span>IGST:</span><span>₹{journal.igst.toFixed(2)}</span></div>)}<div className={`flex justify-between items-center text-xl font-bold pt-2 border-t ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}><span>Total:</span><span>₹{journal.grandTotal.toFixed(2)}</span></div></div></div>
       </div>
+      <footer className={`flex items-center justify-end p-4 space-x-3 border-t ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}><button onClick={handleClose} className={`px-6 py-2 rounded-md font-semibold transition-colors ${theme === 'light' ? 'bg-gray-200 hover:bg-gray-300' : 'bg-gray-600 hover:bg-gray-500'}`}>Cancel</button><button className="flex items-center gap-2 px-6 py-2 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"><Save size={18} /> Save Journal</button></footer>
     </div>
+    </>
   );
 };
 
@@ -241,7 +308,7 @@ const Sidebar = ({ isExpanded, onToggle, theme, onCreateClick, setActiveScreen }
     const getTextColor = () => theme === 'light' ? 'text-gray-600' : 'text-gray-400';
     const getHoverColor = () => theme === 'light' ? 'hover:bg-gray-200/50 hover:text-gray-900' : 'hover:bg-white/10 hover:text-white';
     const getActiveColor = () => theme === 'light' ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/10 text-blue-400';
-    
+
     const menuItems = [
         { text: "Sales", action: () => setActiveScreen('salesReport') },
         { text: "Purchases", action: () => setActiveScreen('purchaseReport') },
@@ -267,7 +334,6 @@ const Sidebar = ({ isExpanded, onToggle, theme, onCreateClick, setActiveScreen }
                 <div className="flex-1 px-4">
                     <div className="my-4">
                         <button onClick={onCreateClick} className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors`}>
-                            <PlusCircle size={20} />
                             <span className={`${!isExpanded && "hidden"}`}>Create</span>
                         </button>
                     </div>
@@ -291,9 +357,9 @@ const CommandPalette = ({ isOpen, onClose, onSelectCommand, theme, commands, ini
   useEffect(() => { if (isOpen) { setSearch(initialQuery); setTimeout(() => inputRef.current?.focus(), 100); } }, [isOpen, initialQuery]);
   useEffect(() => { setActiveIndex(0); }, [search]);
   const handleKeyDown = (e) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(prev => (prev + 1) % filteredCommands.length); } 
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length); } 
-    else if (e.key === 'Enter') { e.preventDefault(); if (filteredCommands[activeIndex]) { onSelectCommand(filteredCommands[activeIndex]); } } 
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(prev => (prev + 1) % filteredCommands.length); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (filteredCommands[activeIndex]) { onSelectCommand(filteredCommands[activeIndex]); } }
     else if (e.key === 'Escape') { onClose(); }
   };
   if (!isOpen) return null;
@@ -325,7 +391,7 @@ const PeriodSelector = ({ theme }) => {
         const month = date.getMonth();
         return month >= 3 ? `${year}-${(year + 1).toString().slice(-2)}` : `${year - 1}-${year.toString().slice(-2)}`;
     };
-    
+
     const generateAllSearchableMonths = () => {
         let allMonths = [];
         const baseDate = new Date(2025, 7, 1);
@@ -336,7 +402,7 @@ const PeriodSelector = ({ theme }) => {
         }
         return allMonths;
     };
-    
+
     const [allSearchableMonths] = useState(generateAllSearchableMonths());
 
     useEffect(() => { if (isOpen) { setTimeout(() => inputRef.current?.focus(), 0); } }, [isOpen]);
@@ -357,7 +423,7 @@ const PeriodSelector = ({ theme }) => {
         const year = parseInt(`20${yearAbbr}`);
         const monthIndex = new Date(Date.parse(monthName +" 1, 2012")).getMonth();
         setCurrentDate(new Date(year, monthIndex, 1));
-        setIsOpen(false); 
+        setIsOpen(false);
         setFilter('');
     };
 
@@ -419,17 +485,39 @@ const App = () => {
   ];
 
   const handleSelectCommand = (command) => { command.action(); setIsCommandPaletteOpen(false); };
+  
+  const closeJournal = () => setActiveScreen('dashboard');
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-        if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setInitialCommandQuery(''); setIsCommandPaletteOpen(true); return; }
-        const targetNodeName = e.target.nodeName; const isTypingInInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(targetNodeName);
-        if (!isCommandPaletteOpen && e.key.match(/^[a-zA-Z0-9]$/) && !isTypingInInput && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setInitialCommandQuery(e.key); setIsCommandPaletteOpen(true); }
+        // Escape key to go back
+        if (e.key === 'Escape') {
+            if (isCommandPaletteOpen) {
+                setIsCommandPaletteOpen(false);
+            } else if (activeScreen !== 'dashboard') {
+                const salesJournalComponent = document.querySelector('.sales-journal-component'); // A bit of a hack, better to use state
+                if (salesJournalComponent) {
+                    // The SalesJournal component will handle its own close logic with confirmation
+                    // We can trigger its close function if needed, but it's handled internally now.
+                } else {
+                    closeJournal();
+                }
+            }
+            return;
+        }
+
+        // Command Palette shortcuts
+        if (activeScreen === 'dashboard') {
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setInitialCommandQuery(''); setIsCommandPaletteOpen(true); return; }
+            const targetNodeName = e.target.nodeName; const isTypingInInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(targetNodeName);
+            if (!isCommandPaletteOpen && e.key.match(/^[a-zA-Z0-9]$/) && !isTypingInInput && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setInitialCommandQuery(e.key); setIsCommandPaletteOpen(true); }
+        }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCommandPaletteOpen]);
+  }, [isCommandPaletteOpen, activeScreen]);
 
-  const fontFamilies = ['Inter', 'Roboto', 'Poppins', 'Lato', 'Montserrat'];
+  const fontFamilies = ['Inter', 'Roboto', 'Poppins', 'Lato', 'Playpen Sans Hebrew'];
   const [fontIndex, setFontIndex] = useState(0);
   const [isFontDropdownOpen, setIsFontDropdownOpen] = useState(false);
   const fontDropdownRef = useRef(null);
@@ -452,12 +540,12 @@ const App = () => {
     { id: 'payables', title: 'Payables', content: [{ period: "7 days", amount: 5000 }, { period: "30 days", amount: 15600 }, { period: "Total", amount: 52120 }], component: 'FinancialList' },
     { id: 'inventory_summary', title: 'Inventory Summary', content: { items: 240, value: 450200 }, component: 'InventorySummary' },
     { id: 'authorities', title: 'with Authorities', content: [{ type: "GST ITC", amount: 32150 }, { type: "TDS", amount: 18420 }, { type: "Total", amount: 13730 }], component: 'FinancialList', action: () => setActiveScreen('gstr1') },
-    { id: 'recent_entries', title: 'Recent Entries / Edits', content: recentEntries, component: 'EntriesList', className: 'lg:col-span-2' },
+    { id: 'recent_entries', title: 'Recent Entries & Edits', content: recentEntries, component: 'EntriesList', className: 'lg:col-span-2' },
     { id: 'sales_chart', title: 'Sales', content: salesChartData, component: 'SalesChart', className: 'lg:col-span-2', action: () => setActiveScreen('salesReport') },
   ]);
 
   useEffect(() => {
-    setCards(prevCards => prevCards.map(card => 
+    setCards(prevCards => prevCards.map(card =>
         card.id === 'recent_entries' ? { ...card, content: recentEntries } : card
     ));
   }, [recentEntries]);
@@ -471,7 +559,7 @@ const App = () => {
   const selectFont = (index) => { setFontIndex(index); setIsFontDropdownOpen(false); };
   const getBackgroundColor = () => theme === 'light' ? 'bg-[#FFF3E7]' : (theme === 'dark' ? 'bg-slate-900' : 'bg-zinc-950');
   const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
-  const getCardClasses = (isBeingDragged, isRearranging, isClickable) => `backdrop-blur-sm border shadow-lg rounded-md transition-all duration-300 ease-in-out p-6 ${isBeingDragged ? 'opacity-50 z-10' : ''} ${isRearranging ? 'cursor-grab animate-pulse-once' : (isClickable ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl' : '')} ${theme === 'light' ? 'bg-white/50 border-gray-200' : 'bg-white/5 border-white/10'}`;
+  const getCardClasses = (isBeingDragged, isRearranging, isClickable) => `backdrop-blur-sm border shadow-lg rounded-md transition-all duration-300 ease-in-out p-6 ${isBeingDragged ? 'opacity-50 z-10' : ''} ${isRearranging ? 'cursor-grab animate-pulse-once' : (isClickable ? 'cursor-pointer hover:scale-[1.02] hover:shadow-xl ' + (theme === 'light' ? 'hover:bg-gray-200/50 hover:text-gray-900' : 'hover:bg-white/10 hover:text-white') : '')} ${theme === 'light' ? 'bg-white/50 border-gray-200' : 'bg-white/5 border-white/10'}`;
   const FinancialValue = ({ label, value, valueColor = getTextColor() }) => (<div className="flex justify-between items-center py-1"><span className={theme === 'light' ? "text-gray-600" : "text-gray-400"}>{label}</span><span className={`font-semibold ${valueColor}`}>₹{value.toLocaleString()}</span></div>);
   const EntryItem = ({ type, reference, date, amount, user }) => (
     <tr className={`border-b ${theme === 'light' ? "border-gray-200" : "border-white/10"} last:border-b-0`}>
@@ -482,7 +570,7 @@ const App = () => {
         <td className="py-2 pl-2 text-xs text-right">{user}</td>
     </tr>
   );
-  
+
   const StatCard = ({ card }) => {
     const { title, component, content, className, action } = card;
     const isClickable = !!action;
@@ -501,37 +589,55 @@ const App = () => {
     };
     return (<div onClick={action} className={`${getCardClasses(draggedCardId === card.id, isRearrangeMode, isClickable)} ${className}`} draggable={isRearrangeMode} onDragStart={(e) => handleCardDragStart(e, card.id)} onDragOver={(e) => handleCardDragOver(e, card.id)} onDragEnd={handleCardDragEnd}><h3 className={`text-lg font-bold mb-4 ${getTextColor()}`}>{title}</h3>{renderContent()}</div>);
   };
-  const closeJournal = () => setActiveScreen('dashboard');
+  
   const pageMap = {
     salesReturn: "Sales Return - Credit Note", purchaseReturn: "Purchase Return - Debit Note", cashReceipts: "Cash Receipts", cashPayments: "Cash Payments", bankReceipts: "Bank Receipts", stockFlow: "Stock Flow", directExpense: "Direct Expense", indirectExpense: "Indirect Expense", generalJournal: "General Journal", balanceSheetReport: "Balance Sheet", plReport: "Profit and Loss Account", trialBalance: "Trial Balance", dayBook: "Day Book", gstr1: "GSTR 1", gstr2b: "GSTR 2B", gstr3b: "GSTR 3B", gstr9: "GSTR 9", banking: "Banking"
   };
 
+  const renderActiveScreen = () => {
+    switch (activeScreen) {
+        case 'dashboard':
+            return (
+                <div className="p-4 md:p-8">
+                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                        <h1 className={`text-2xl md:text-3xl font-extrabold ${theme === 'light' ? "text-gray-900" : "text-white"}`}>Home</h1>
+                        <div className="flex items-center space-x-2 mt-2 md:mt-0">
+                            <button onClick={() => {setInitialCommandQuery(''); setIsCommandPaletteOpen(true);}} className={`p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}><Search size={20} /></button>
+                            <div className="relative" ref={fontDropdownRef}><button onClick={() => setIsFontDropdownOpen(!isFontDropdownOpen)} className={`flex items-center p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}><Type size={20} /><ChevronDown size={20} className="ml-1" /></button>{isFontDropdownOpen && (<div className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg z-10 py-1 ${theme === 'light' ? "bg-white border-gray-200" : "bg-gray-800 border-gray-700"}`} style={{ fontFamily: 'Inter' }}>{fontFamilies.map((font, index) => (<button key={font} onClick={() => selectFont(index)} className={`block w-full text-left px-4 py-2 text-sm transition-colors duration-150 ${theme === 'light' ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-100 hover:bg-gray-700'}`} style={{ fontFamily: font }}>{font}</button>))}</div>)}</div>
+                            <button onClick={() => setIsRearrangeMode(!isRearrangeMode)} className={`p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${isRearrangeMode ? (theme === 'light' ? 'bg-blue-200 text-blue-800' : 'bg-blue-700 text-blue-100') : (theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100')}`}><LayoutGrid size={20} /></button>
+                            <button onClick={toggleBold} className={`relative p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}><Bold size={20} className={boldnessLevel > 0 ? (theme === 'light' ? "text-blue-600" : "text-blue-400") : ""} strokeWidth={2.5 + boldnessLevel * 0.5} /></button>
+                            <button onClick={toggleTheme} className={`relative p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}>{theme === 'light' ? <Sun size={20} className="text-yellow-500" strokeWidth={3} /> : <Moon size={20} className={theme === 'black' ? 'text-gray-400' : 'text-blue-500'} style={{ transform: 'rotate(270deg)' }} />}</button>
+                            <PeriodSelector theme={theme} />
+                        </div>
+                    </header>
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">{cards.map((card) => <StatCard key={card.id} card={card} />)}</div>
+                </div>
+            );
+        case 'salesJournal':
+            return <SalesJournal onClose={closeJournal} theme={theme} />;
+        case 'purchaseJournal':
+            return <PurchaseJournal onClose={closeJournal} theme={theme} />;
+        case 'salesReport':
+            return <ReportPage title="Sales Report" data={permanentSales} theme={theme} onClose={closeJournal} />;
+        case 'purchaseReport':
+            return <ReportPage title="Purchase Report" data={permanentPurchases} theme={theme} onClose={closeJournal} />;
+        case 'cashTransactions':
+            return <ReportPage title="Cash Transactions" data={permanentDirectExpense} theme={theme} onClose={closeJournal} />;
+        default:
+            if (pageMap[activeScreen]) {
+                return <GenericPage title={pageMap[activeScreen]} onClose={closeJournal} theme={theme} />;
+            }
+            return null;
+    }
+  };
+
   return (
     <div className={`min-h-screen flex ${getBackgroundColor()} ${getTextColor()} ${boldnessClasses[boldnessLevel]}`} style={{ fontFamily: fontFamilies[fontIndex] }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Lato:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700;800&family=Source+Sans+3:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700;800&family=Merriweather:wght@400;700;900&display=swap'); @keyframes pulse-once { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.98); } } .animate-pulse-once { animation: pulse-once 1s ease-in-out; }`}</style>
-      <Sidebar isExpanded={isSidebarExpanded} onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)} theme={theme} onCreateClick={() => {setInitialCommandQuery(''); setIsCommandPaletteOpen(true);}} setActiveScreen={setActiveScreen}/>
-      {activeScreen === 'salesJournal' && <SalesJournal onClose={closeJournal} theme={theme} />}
-      {activeScreen === 'purchaseJournal' && <PurchaseJournal onClose={closeJournal} theme={theme} />}
-      {activeScreen === 'salesReport' && <ReportPage title="Sales Report" data={permanentSales} theme={theme} onClose={closeJournal} />}
-      {activeScreen === 'purchaseReport' && <ReportPage title="Purchase Report" data={permanentPurchases} theme={theme} onClose={closeJournal} />}
-      {activeScreen === 'cashTransactions' && <ReportPage title="Cash Transactions" data={permanentDirectExpense} theme={theme} onClose={closeJournal} />}
-      {Object.keys(pageMap).includes(activeScreen) && <GenericPage title={pageMap[activeScreen]} onClose={closeJournal} theme={theme} />}
++      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Lato:wght@400;500;600;700;800&family=Open+Sans:wght@400;500;600;700;800&family=Source+Sans+3:wght@400;500;600;700;800&family=Nunito:wght@400;500;600;700;800&family=Oswald:wght@400;500;600;700;800&family=Merriweather:wght@400;700;900&family=Playpen+Sans+Hebrew:wght@400;500;600;700;800&display=swap'); @keyframes pulse-once { 0%, 100% { transform: scale(1); } 50% { transform: scale(0.98); } } .animate-pulse-once { animation: pulse-once 1s ease-in-out; }`}</style>
+<Sidebar isExpanded={isSidebarExpanded} onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)} theme={theme} onCreateClick={() => {setInitialCommandQuery(''); setIsCommandPaletteOpen(true);}} setActiveScreen={setActiveScreen}/>
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onSelectCommand={handleSelectCommand} theme={theme} commands={commands} initialQuery={initialCommandQuery}/>
       <main className={`flex-1 transition-all duration-300 ${isSidebarExpanded ? 'ml-64' : 'ml-20'}`}>
-        <div className={`p-4 md:p-8 ${activeScreen !== 'dashboard' ? 'blur-sm pointer-events-none' : ''}`}>
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <h1 className={`text-2xl md:text-3xl font-extrabold ${theme === 'light' ? "text-gray-900" : "text-white"}`}>Accounting Dashboard</h1>
-                <div className="flex items-center space-x-2 mt-2 md:mt-0">
-                    <button onClick={() => {setInitialCommandQuery(''); setIsCommandPaletteOpen(true);}} className={`p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}><Search size={20} /></button>
-                    <div className="relative" ref={fontDropdownRef}><button onClick={() => setIsFontDropdownOpen(!isFontDropdownOpen)} className={`flex items-center p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}><Type size={20} /><ChevronDown size={20} className="ml-1" /></button>{isFontDropdownOpen && (<div className={`absolute right-0 mt-2 w-48 rounded-md shadow-lg z-10 py-1 ${theme === 'light' ? "bg-white border-gray-200" : "bg-gray-800 border-gray-700"}`} style={{ fontFamily: 'Inter' }}>{fontFamilies.map((font, index) => (<button key={font} onClick={() => selectFont(index)} className={`block w-full text-left px-4 py-2 text-sm transition-colors duration-150 ${theme === 'light' ? 'text-gray-700 hover:bg-gray-100' : 'text-gray-100 hover:bg-gray-700'}`} style={{ fontFamily: font }}>{font}</button>))}</div>)}</div>
-                    <button onClick={() => setIsRearrangeMode(!isRearrangeMode)} className={`p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${isRearrangeMode ? (theme === 'light' ? 'bg-blue-200 text-blue-800' : 'bg-blue-700 text-blue-100') : (theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100')}`}><LayoutGrid size={20} /></button>
-                    <button onClick={toggleBold} className={`relative p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}><Bold size={20} className={boldnessLevel > 0 ? (theme === 'light' ? "text-blue-600" : "text-blue-400") : ""} strokeWidth={2.5 + boldnessLevel * 0.5} /></button>
-                    <button onClick={toggleTheme} className={`relative p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}>{theme === 'light' ? <Sun size={20} className="text-yellow-500" strokeWidth={3} /> : <Moon size={20} className={theme === 'black' ? 'text-gray-400' : 'text-blue-500'} style={{ transform: 'rotate(270deg)' }} />}</button>
-                    <PeriodSelector theme={theme} />
-                </div>
-            </header>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">{cards.map((card) => <StatCard key={card.id} card={card} />)}</div>
-        </div>
+        {renderActiveScreen()}
       </main>
     </div>
   );
