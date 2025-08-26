@@ -9,7 +9,6 @@ An interactive and responsive accounting dashboard built with React and Vite. Th
 
 ## ✨ Features
 **Theme Switching:** Easily toggle between Light, Dark, and a pure Black theme.\
-**Drag-and-Drop:** Rearrange the cards on the dashboard to customize your view.\
 **Financial Widgets:** Displays example data for Profit & Loss, Balance Sheet, Cash Flow, and more.\
 **Dynamic Charts:** Includes a responsive line chart using Recharts to visualize sales data.
 
