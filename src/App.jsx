@@ -2,9 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Sun, Moon, Bold, Type, ChevronDown, X, Trash2, Search, Save, PlusCircle, Menu, ChevronsLeft, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 
-// --- Mock Data ---
+// --- DATA: Mock Data & Constants ---
+// In a real app, this would come from an API or state management.
 const mockData = {
-    // 1. transactions
     transactions: {
         sales: [
             { id: 1, type: "Sales", reference: "INV-00126 to Sunrise Solutions", date: "Aug 23, 2025", amount: 12500, user: "suresh" },
@@ -20,7 +20,6 @@ const mockData = {
             { id: 1, type: "Direct Expense", reference: "Office Supplies (Cash)", date: "Aug 20, 2025", amount: 500, user: "suresh" },
         ],
     },
-    // 2. customers, suppliers, products
     entities: {
         customers: [
             { id: 1, name: 'Innovate Corp', address: '123 Tech Park, Silicon Valley', gst: '29ABCDE1234F1Z5' },
@@ -47,8 +46,8 @@ const allPermanentTransactions = [
     ...mockData.transactions.directExpense
 ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
+// --- COMPONENTS: Reusable UI Components (would go in src/components/) ---
 
-// --- Reusable UI Components ---
 
 const CautionModal = ({ isOpen, onConfirm, onCancel, theme }) => {
     if (!isOpen) return null;
@@ -77,298 +76,32 @@ const CautionModal = ({ isOpen, onConfirm, onCancel, theme }) => {
     );
 };
 
-const GenericPage = ({ title, onClose, theme, children, subtitleProps }) => {
-  const getBackgroundColor = () => theme === 'light' ? 'bg-white' : (theme === 'dark' ? 'bg-slate-800' : 'bg-zinc-900');
-  const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
-  return (
-    <div className={`w-full h-full flex flex-col ${getBackgroundColor()} ${getTextColor()}`}>
-       <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
-         <h2 className="text-xl font-bold">{title}</h2>
-         <div className="flex items-center gap-2">
-            {subtitleProps && <Subtitle {...subtitleProps} />}
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button>
-         </div>
-       </header>
-       <div className="flex-grow p-6 overflow-y-auto">
-           {children ? children : (
-               <div className="flex items-center justify-center h-full">
-                   <div className="text-center">
-                       <h3 className="text-2xl font-bold">Coming Soon</h3>
-                       <p className="text-gray-500 mt-2">This page is under construction.</p>
-                   </div>
-               </div>
-           )}
-       </div>
-     </div>
-  );
-};
-
-// --- Combined Create Journal Component ---
-const CreateJournal = ({ onClose, theme, initialType = 'sales', subtitleProps }) => {
-    const [journalType, setJournalType] = useState(initialType);
-
-    const getInitialState = (type) => ({
-        docNo: type === 'sales' ? `INV-${Math.floor(1000 + Math.random() * 9000)}` : `BILL-${Math.floor(1000 + Math.random() * 9000)}`,
-        docDate: new Date().toISOString().split('T')[0],
-        dueDate: new Date(new Date().setDate(new Date().getDate() + (type === 'sales' ? 15 : 30))).toISOString().split('T')[0],
-        party: null,
-        billingAddress: '',
-        shippingAddress: '',
-        placeOfSupply: '',
-        items: [{ productId: '', name: '', hsn: '', qty: 1, rate: 0, amount: 0, taxRate: 18 }],
-        notes: type === 'sales' ? 'Thank you for your business.' : 'Payment to be made within 30 days.',
-        subTotal: 0, cgst: 0, sgst: 0, igst: 0, grandTotal: 0,
-    });
-
-    const [journal, setJournal] = useState(getInitialState(journalType));
-    const [partySearch, setPartySearch] = useState('');
-    const [partyResults, setPartyResults] = useState([]);
-    const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
-    const [isDirty, setIsDirty] = useState(false);
-    const [showCaution, setShowCaution] = useState(false);
-    
-    const partyInputRef = useRef(null);
-
-    const isSales = journalType === 'sales';
-    const parties = isSales ? mockData.entities.customers : mockData.entities.suppliers;
-    const partyType = isSales ? 'Customer' : 'Supplier';
-    const docType = isSales ? 'Invoice' : 'Bill';
-
-    useEffect(() => {
-        partyInputRef.current?.focus();
-    }, [journalType]);
-
-    useEffect(() => {
-        setIsDirty(JSON.stringify(journal) !== JSON.stringify(getInitialState(journalType)));
-    }, [journal, journalType]);
-    
-    useEffect(() => {
-        // Reset state when switching journal type
-        setJournal(getInitialState(journalType));
-        setPartySearch('');
-        setPartyResults([]);
-        setIsPartyDropdownOpen(false);
-    }, [journalType]);
-
-    useEffect(() => {
-        const subTotal = journal.items.reduce((acc, item) => acc + (item.amount || 0), 0);
-        let cgst = 0, sgst = 0, igst = 0;
-        const isInterstate = journal.placeOfSupply.toLowerCase() !== 'tamil nadu';
-        journal.items.forEach(item => {
-            const tax = (item.amount * (item.taxRate || 0)) / 100;
-            if (isInterstate) igst += tax; else { cgst += tax / 2; sgst += tax / 2; }
-        });
-        const grandTotal = subTotal + cgst + sgst + igst;
-        setJournal(prev => ({ ...prev, subTotal, cgst, sgst, igst, grandTotal }));
-    }, [journal.items, journal.placeOfSupply]);
-
-    const handleClose = () => { isDirty ? setShowCaution(true) : onClose(); };
-    const handleConfirmClose = () => { setShowCaution(false); onClose(); };
-    const handleCancelClose = () => setShowCaution(false);
-
-    const handleJournalChange = (e) => { const { name, value } = e.target; setJournal(prev => ({ ...prev, [name]: value })); };
-
-    const handleItemChange = (index, e) => {
-        const { name, value } = e.target;
-        const items = [...journal.items];
-        items[index][name] = value;
-        if (name === 'productId') {
-            const product = mockData.entities.products.find(p => p.id === parseInt(value));
-            if (product) {
-                items[index] = { ...items[index], name: product.name, hsn: product.hsn, rate: product.rate };
-            }
-        }
-        const qty = parseFloat(items[index].qty) || 0;
-        const rate = parseFloat(items[index].rate) || 0;
-        items[index].amount = qty * rate;
-        setJournal(prev => ({ ...prev, items }));
-    };
-
-    const addItem = () => setJournal(prev => ({ ...prev, items: [...prev.items, { productId: '', name: '', hsn: '', qty: 1, rate: 0, amount: 0, taxRate: 18 }] }));
-    const removeItem = (index) => setJournal(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
-
-    const handlePartySearch = (e) => {
-        setPartySearch(e.target.value);
-        if (e.target.value) {
-            setIsPartyDropdownOpen(true);
-            setPartyResults(parties.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())));
-        } else {
-            setIsPartyDropdownOpen(false);
-            setPartyResults([]);
-        }
-    };
-
-    const selectParty = (party) => {
-        setJournal(prev => ({
-            ...prev,
-            party,
-            billingAddress: party.address,
-            shippingAddress: isSales ? party.address : '',
-            placeOfSupply: party.address.split(',').pop().trim()
-        }));
-        setPartySearch(party.name);
-        setIsPartyDropdownOpen(false);
-    };
-
-    const getBackgroundColor = () => theme === 'light' ? 'bg-white' : (theme === 'dark' ? 'bg-slate-800' : 'bg-zinc-900');
-    const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
-    const getInputClasses = () => `w-full px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === 'light' ? 'bg-gray-100 border border-gray-300 text-gray-900' : 'bg-gray-700 border border-gray-600 text-gray-100'}`;
-    const getLabelClasses = () => `block text-sm font-medium mb-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`;
-
-    return (
-        <>
-            <CautionModal isOpen={showCaution} onConfirm={handleConfirmClose} onCancel={handleCancelClose} theme={theme} />
-            <div className={`w-full h-full flex flex-col ${getBackgroundColor()} ${getTextColor()}`}>
-                <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
-                    <div className="flex items-center gap-4">
-                        <div className={`flex rounded-md p-1 ${theme === 'light' ? 'bg-gray-200' : 'bg-gray-700'}`}>
-                            <button onClick={() => setJournalType('sales')} className={`px-3 py-1 text-sm font-semibold rounded ${isSales ? (theme === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'bg-slate-800 text-blue-400') : 'text-gray-500 hover:bg-white/5'}`}>Sales</button>
-                            <button onClick={() => setJournalType('purchase')} className={`px-3 py-1 text-sm font-semibold rounded ${!isSales ? (theme === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'bg-slate-800 text-blue-400') : 'text-gray-500 hover:bg-white/5'}`}>Purchase</button>
-                        </div>
-                        <h2 className="text-xl font-bold">New {isSales ? 'Sales' : 'Purchase'} Journal</h2>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        {subtitleProps && <Subtitle {...subtitleProps} />}
-                        <button onClick={handleClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button>
-                    </div>
-                </header>
-                <div className="flex-grow p-6 overflow-y-auto">
-                    {/* Form Content */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                        <div className="md:col-span-2 space-y-4">
-                            <div className="relative">
-                                <label className={getLabelClasses()}>{partyType}</label>
-                                <div className="relative">
-                                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                    <input ref={partyInputRef} type="text" value={partySearch} onChange={handlePartySearch} placeholder={`Search or Add a ${partyType}`} className={`${getInputClasses()} pl-10`} />
-                                </div>
-                                {isPartyDropdownOpen && partyResults.length > 0 && (
-                                    <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${theme === 'light' ? 'bg-white' : 'bg-gray-800'} border ${theme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>
-                                        {partyResults.map(p => (<div key={p.id} onClick={() => selectParty(p)} className={`px-4 py-2 cursor-pointer hover:bg-blue-500/20`}><p className="font-semibold">{p.name}</p><p className="text-sm text-gray-400">{p.address}</p></div>))}
-                                    </div>
-                                )}
-                            </div>
-                            <div className={`grid grid-cols-1 ${isSales ? 'md:grid-cols-2' : ''} gap-4`}>
-                                <div><label className={getLabelClasses()}>Billing Address</label><textarea name="billingAddress" value={journal.billingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div>
-                                {isSales && <div><label className={getLabelClasses()}>Shipping Address</label><textarea name="shippingAddress" value={journal.shippingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div>}
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <div><label className={getLabelClasses()}>{docType} No.</label><input type="text" name="docNo" value={journal.docNo} onChange={handleJournalChange} className={getInputClasses()} /></div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div><label className={getLabelClasses()}>{docType} Date</label><input type="date" name="docDate" value={journal.docDate} onChange={handleJournalChange} className={getInputClasses()} /></div>
-                                <div><label className={getLabelClasses()}>Due Date</label><input type="date" name="dueDate" value={journal.dueDate} onChange={handleJournalChange} className={getInputClasses()} /></div>
-                            </div>
-                            <div><label className={getLabelClasses()}>Place of Supply (State)</label><input type="text" name="placeOfSupply" value={journal.placeOfSupply} onChange={handleJournalChange} placeholder="e.g., Tamil Nadu" className={getInputClasses()} /></div>
-                        </div>
-                    </div>
-                    {/* Items Table */}
-                    <div className="overflow-x-auto"><table className="w-full text-left"><thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}><tr><th className="p-3 font-semibold">#</th><th className="p-3 font-semibold w-2/5">Item Details</th><th className="p-3 font-semibold">HSN/SAC</th><th className="p-3 font-semibold">Qty</th><th className="p-3 font-semibold">Rate</th><th className="p-3 font-semibold">Amount</th><th className="p-3 font-semibold"></th></tr></thead><tbody>{journal.items.map((item, index) => (<tr key={index} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><td className="p-2">{index + 1}</td><td className="p-2"><select name="productId" value={item.productId} onChange={(e) => handleItemChange(index, e)} className={`${getInputClasses()} mb-1`}><option value="">Select Product/Service</option>{mockData.entities.products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><input type="text" name="name" placeholder="Description" value={item.name} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="text" name="hsn" value={item.hsn} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="qty" value={item.qty} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="rate" value={item.rate} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2 text-right pr-4 font-medium">₹{item.amount.toFixed(2)}</td><td className="p-2"><button onClick={() => removeItem(index)} className="p-2 text-red-500 hover:text-red-400"><Trash2 size={18} /></button></td></tr>))}</tbody></table></div>
-                    <button onClick={addItem} className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-500 hover:text-blue-400"><PlusCircle size={18} /> Add another line</button>
-                    {/* Totals Section */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-dashed"><div><label className={getLabelClasses()}>Notes / Terms & Conditions</label><textarea name="notes" value={journal.notes} onChange={handleJournalChange} rows="4" className={getInputClasses()}></textarea></div><div className="space-y-2"><div className="flex justify-between items-center"><span className="font-medium">Sub Total:</span><span>₹{journal.subTotal.toFixed(2)}</span></div>{journal.cgst > 0 && (<div className="flex justify-between items-center"><span>CGST:</span><span>₹{journal.cgst.toFixed(2)}</span></div>)}{journal.sgst > 0 && (<div className="flex justify-between items-center"><span>SGST:</span><span>₹{journal.sgst.toFixed(2)}</span></div>)}{journal.igst > 0 && (<div className="flex justify-between items-center"><span>IGST:</span><span>₹{journal.igst.toFixed(2)}</span></div>)}<div className={`flex justify-between items-center text-xl font-bold pt-2 border-t ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}><span>Total:</span><span>₹{journal.grandTotal.toFixed(2)}</span></div></div></div>
-                </div>
-                <footer className={`flex items-center justify-end p-4 space-x-3 border-t ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}><button onClick={handleClose} className={`px-6 py-2 rounded-md font-semibold transition-colors ${theme === 'light' ? 'bg-gray-200 hover:bg-gray-300' : 'bg-gray-600 hover:bg-gray-500'}`}>Cancel</button><button className="flex items-center gap-2 px-6 py-2 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"><Save size={18} /> Save Journal</button></footer>
-            </div>
-        </>
-    );
-};
-
-// --- Report Page Component ---
-const ReportPage = ({ data, theme }) => (
-    <div className="overflow-x-auto">
-        <table className="w-full text-left">
-            <thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}>
-                <tr>
-                    <th className="p-3 font-semibold">Date</th>
-                    <th className="p-3 font-semibold">Reference</th>
-                    <th className="p-3 font-semibold text-right">Amount</th>
-                    <th className="p-3 font-semibold">User</th>
-                </tr>
-            </thead>
-            <tbody>
-                {data.map(item => (
-                    <tr key={item.id} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
-                        <td className="p-3">{item.date}</td>
-                        <td className="p-3">{item.reference}</td>
-                        <td className="p-3 text-right font-medium">₹{item.amount.toLocaleString()}</td>
-                        <td className="p-3">{item.user}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
-);
-
-// --- Sidebar Component ---
-const Sidebar = ({ isExpanded, onToggle, theme, onCreateClick, setActiveScreen }) => {
-    const getBgColor = () => theme === 'light' ? 'bg-white/80' : (theme === 'dark' ? 'bg-slate-900/80' : 'bg-black/80');
-    const getTextColor = () => theme === 'light' ? 'text-gray-600' : 'text-gray-400';
-    const getHoverColor = () => theme === 'light' ? 'hover:bg-gray-200/50 hover:text-gray-900' : 'hover:bg-white/10 hover:text-white';
-    const getActiveColor = () => theme === 'light' ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/10 text-blue-400';
-    const menuItems = [
-        { text: "Sales", action: () => setActiveScreen('salesReport') },
-        { text: "Purchases", action: () => setActiveScreen('purchaseReport') },
-        { text: "Banking", action: () => setActiveScreen('banking') },
-        { text: "Cash Flow", action: () => setActiveScreen('cashTransactions') },
-        { text: "Direct Expenses", action: () => setActiveScreen('directExpense') },
-        { text: "Indirect Expense", action: () => setActiveScreen('indirectExpense') },
-    ];
-    const MenuItem = ({ text, action, active = false }) => (
-        <a href="#" onClick={(e) => { e.preventDefault(); action(); }} className={`flex items-center gap-3 rounded-md px-3 py-2 transition-all ${getTextColor()} ${getHoverColor()} ${active ? getActiveColor() : ''}`}>
-            <span className={`origin-left duration-200 font-semibold ${!isExpanded && "scale-0"}`}>{text}</span>
-        </a>
-    );
-    return (
-        <aside className={`fixed top-0 left-0 z-40 h-screen border-r backdrop-blur-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-20'} ${theme === 'black' ? 'border-gray-800' : (theme === 'light' ? 'border-gray-200' : 'border-white/10')} ${getBgColor()}`}>
-            <nav className="h-full flex flex-col">
-                <div className={`p-4 pb-2 flex ${isExpanded ? 'justify-between' : 'justify-center'} items-center`}>
-                    <h1 onClick={() => setActiveScreen('dashboard')} className={`overflow-hidden transition-all text-2xl font-bold cursor-pointer ${!isExpanded && "w-0"}`}>OSAS 2063</h1>
-                    <button onClick={onToggle} className={`p-2 rounded-md ${getHoverColor()}`}>{isExpanded ? <ChevronsLeft /> : <Menu />}</button>
-                </div>
-                <div className="flex-1 px-4">
-                    <div className="my-4">
-                        <button onClick={onCreateClick} className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors`}>
-                            <span className={`${!isExpanded && "hidden"}`}>Create</span>
-                        </button>
-                    </div>
-                    <div className="space-y-1">
-                        {menuItems.map(item => <MenuItem key={item.text} text={item.text} action={item.action} />)}
-                    </div>
-                </div>
-            </nav>
-        </aside>
-    );
-}
-
-// --- Command Palette Component ---
 const CommandPalette = ({ isOpen, onClose, onSelectCommand, theme, commands, initialQuery = '' }) => {
-  const [search, setSearch] = useState(initialQuery);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const inputRef = useRef(null);
-  const filteredCommands = search ? commands.filter(cmd => cmd.label.toLowerCase().includes(search.toLowerCase())) : commands;
-  useEffect(() => { if (isOpen) { setSearch(initialQuery); setTimeout(() => inputRef.current?.focus(), 100); } }, [isOpen, initialQuery]);
-  useEffect(() => { setActiveIndex(0); }, [search]);
-  const handleKeyDown = (e) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(prev => (prev + 1) % filteredCommands.length); }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (filteredCommands[activeIndex]) { onSelectCommand(filteredCommands[activeIndex]); } }
-    else if (e.key === 'Escape') { onClose(); }
-  };
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div className={`w-full max-w-lg mx-auto mt-[15vh] rounded-xl shadow-2xl overflow-hidden ${theme === 'light' ? 'bg-white' : 'bg-slate-800'}`} onClick={e => e.stopPropagation()}>
-        <div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input ref={inputRef} type="text" placeholder="Type a command or search..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleKeyDown} className={`w-full p-4 pl-12 text-lg outline-none ${theme === 'light' ? 'text-gray-800 bg-gray-50' : 'text-gray-100 bg-slate-900'}`} /></div>
-        <ul className="p-2 max-h-[40vh] overflow-y-auto">{filteredCommands.length > 0 ? filteredCommands.map((cmd, index) => (<li key={cmd.label} onClick={() => onSelectCommand(cmd)} className={`p-3 rounded-md cursor-pointer flex justify-between items-center ${activeIndex === index ? (theme === 'light' ? 'bg-blue-100 text-blue-700' : 'bg-blue-500/20 text-blue-300') : (theme === 'light' ? 'hover:bg-gray-100' : 'hover:bg-white/5')}`} onMouseEnter={() => setActiveIndex(index)}><span className="font-medium">{cmd.label}</span><span className="text-xs text-gray-400">{cmd.category}</span></li>)) : (<li className="p-4 text-center text-gray-500">No results found.</li>)}</ul>
+    const [search, setSearch] = useState(initialQuery);
+    const [activeIndex, setActiveIndex] = useState(0);
+    const inputRef = useRef(null);
+    const filteredCommands = search ? commands.filter(cmd => cmd.label.toLowerCase().includes(search.toLowerCase())) : commands;
+    useEffect(() => { if (isOpen) { setSearch(initialQuery); setTimeout(() => inputRef.current?.focus(), 100); } }, [isOpen, initialQuery]);
+    useEffect(() => { setActiveIndex(0); }, [search]);
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIndex(prev => (prev + 1) % filteredCommands.length); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length); }
+      else if (e.key === 'Enter') { e.preventDefault(); if (filteredCommands[activeIndex]) { onSelectCommand(filteredCommands[activeIndex]); } }
+      else if (e.key === 'Escape') { onClose(); }
+    };
+    if (!isOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+        <div className={`w-full max-w-lg mx-auto mt-[15vh] rounded-xl shadow-2xl overflow-hidden ${theme === 'light' ? 'bg-white' : 'bg-slate-800'}`} onClick={e => e.stopPropagation()}>
+          <div className="relative"><Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} /><input ref={inputRef} type="text" placeholder="Type a command or search..." value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={handleKeyDown} className={`w-full p-4 pl-12 text-lg outline-none ${theme === 'light' ? 'text-gray-800 bg-gray-50' : 'text-gray-100 bg-slate-900'}`} /></div>
+          <ul className="p-2 max-h-[40vh] overflow-y-auto">{filteredCommands.length > 0 ? filteredCommands.map((cmd, index) => (<li key={cmd.label} onClick={() => onSelectCommand(cmd)} className={`p-3 rounded-md cursor-pointer flex justify-between items-center ${activeIndex === index ? (theme === 'light' ? 'bg-blue-100 text-blue-700' : 'bg-blue-500/20 text-blue-300') : (theme === 'light' ? 'hover:bg-gray-100' : 'hover:bg-white/5')}`} onMouseEnter={() => setActiveIndex(index)}><span className="font-medium">{cmd.label}</span><span className="text-xs text-gray-400">{cmd.category}</span></li>)) : (<li className="p-4 text-center text-gray-500">No results found.</li>)}</ul>
+        </div>
       </div>
-    </div>
-  );
+    );
 };
-
-// --- Period Selector Component ---
+  
 const PeriodSelector = ({ theme }) => {
-    const [currentDate, setCurrentDate] = useState(new Date(2025, 7, 1)); // Start with Aug 2025
+    const [currentDate, setCurrentDate] = useState(new Date(2025, 7, 1));
     const [isOpen, setIsOpen] = useState(false);
     const [filter, setFilter] = useState('');
     const dropdownRef = useRef(null);
@@ -430,7 +163,6 @@ const PeriodSelector = ({ theme }) => {
     );
 };
 
-// --- Theme Elements Component ---
 const ThemeElements = ({ theme, toggleTheme, boldnessLevel, toggleBold, fontFamilies, fontIndex, selectFont }) => {
     const [isFontDropdownOpen, setIsFontDropdownOpen] = useState(false);
     const fontDropdownRef = useRef(null);
@@ -465,8 +197,7 @@ const ThemeElements = ({ theme, toggleTheme, boldnessLevel, toggleBold, fontFami
     );
 };
 
-// --- Subtitle Component ---
-const Subtitle = ({ theme, toggleTheme, boldnessLevel, toggleBold, fontFamilies, fontIndex, selectFont, onSearchClick }) => (
+const PageHeader = ({ theme, toggleTheme, boldnessLevel, toggleBold, fontFamilies, fontIndex, selectFont, onSearchClick }) => (
     <div className="flex items-center space-x-2">
         <button onClick={onSearchClick} className={`p-2 h-10 rounded-md transition-colors duration-200 focus:outline-none ${theme === 'light' ? 'bg-gray-200 text-gray-800' : 'bg-gray-700 text-gray-100'}`}><Search size={20} /></button>
         <ThemeElements theme={theme} toggleTheme={toggleTheme} boldnessLevel={boldnessLevel} toggleBold={toggleBold} fontFamilies={fontFamilies} fontIndex={fontIndex} selectFont={selectFont} />
@@ -474,181 +205,438 @@ const Subtitle = ({ theme, toggleTheme, boldnessLevel, toggleBold, fontFamilies,
     </div>
 );
 
+// --- LAYOUTS (would go in src/layouts/) ---
 
-// --- Main App Component ---
-const App = () => {
-  const [theme, setTheme] = useState('black');
-  const [boldnessLevel, setBoldnessLevel] = useState(2);
-  const boldnessClasses = ['font-normal', 'font-medium', 'font-semibold', 'font-bold', 'font-extrabold'];
-  const [activeScreen, setActiveScreen] = useState('dashboard');
-  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
-  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
-  const [initialCommandQuery, setInitialCommandQuery] = useState('');
-  const [initialJournalType, setInitialJournalType] = useState('sales');
-
-  const openCreateScreen = (type) => {
-    setInitialJournalType(type);
-    setActiveScreen('create');
-  };
-
-  const commands = [
-    { label: "Sales Journal", category: "Create New", action: () => openCreateScreen('sales') },
-    { label: "Purchase Journal", category: "Create New", action: () => openCreateScreen('purchase') },
-    { label: "Sales Return - Credit Note", category: "Create New", action: () => setActiveScreen('salesReturn') },
-    { label: "Purchase Return - Debit Note", category: "Create New", action: () => setActiveScreen('purchaseReturn') },
-    { label: "Direct Expense", category: "Create New", action: () => setActiveScreen('directExpense') },
-    { label: "Balance Sheet", category: "Reports", action: () => setActiveScreen('balanceSheetReport') },
-    { label: "Profit and Loss Account", category: "Reports", action: () => setActiveScreen('plReport') },
-    { label: "Sales Report", category: "Reports", action: () => setActiveScreen('salesReport') },
-    { label: "Purchase Report", category: "Reports", action: () => setActiveScreen('purchaseReport') },
-    { label: "Cash Transactions", category: "Reports", action: () => setActiveScreen('cashTransactions') },
-  ];
-
-  const handleSelectCommand = (command) => { command.action(); setIsCommandPaletteOpen(false); };
-  const closeSubScreen = () => setActiveScreen('dashboard');
-
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-        if (e.key === 'Escape') {
-            if (isCommandPaletteOpen) {
-                setIsCommandPaletteOpen(false);
-            } else if (activeScreen !== 'dashboard') {
-                closeSubScreen();
-            }
-            return;
-        }
-        if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setInitialCommandQuery(''); setIsCommandPaletteOpen(true); return; }
-        const targetNodeName = e.target.nodeName; const isTypingInInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(targetNodeName);
-        if (!isCommandPaletteOpen && e.key.match(/^[a-zA-Z0-9]$/) && !isTypingInInput && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setInitialCommandQuery(e.key); setIsCommandPaletteOpen(true); }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCommandPaletteOpen, activeScreen]);
-
-  const fontFamilies = ['Inter', 'Roboto', 'Poppins', 'Lato', 'Playpen Sans Hebrew'];
-  const [fontIndex, setFontIndex] = useState(0);
-
-  const salesChartData = mockData.transactions.sales.map(sale => ({
-      name: new Date(sale.date).toLocaleString('default', { month: 'short' }),
-      sales: sale.amount
-  })).reverse();
-  
-  const [cards] = useState([
-    { id: 'profit_and_loss', title: 'Profit & Loss', content: { currentMonth: 24580, lastMonthChange: 12.5, lastYearChange: -7.5 }, component: 'ProfitLoss', action: () => setActiveScreen('plReport') },
-    { id: 'balance_sheet', title: 'Balance Sheet', content: { totalAssets: 50000, totalLiabilities: 40000, equity: 10000 }, component: 'BalanceSheet', action: () => setActiveScreen('balanceSheetReport') },
-    { id: 'cash_flow', title: 'Cash Flow', content: { cashInflow: 32150, cashOutflow: 18420, netCashFlow: 13730 }, component: 'CashFlow', action: () => setActiveScreen('cashTransactions') },
-    { id: 'banking', title: 'Banking', content: [{ name: "SBI OD", balance: -1212540 }, { name: "Axis CA", balance: 51560 }], component: 'Banking' },
-    { id: 'receivables', title: 'Receivables', content: [{ period: "7 days", amount: 5000 }, { period: "30 days", amount: 15600 }, { period: "Total", amount: 52120 }], component: 'FinancialList' },
-    { id: 'payables', title: 'Payables', content: [{ period: "7 days", amount: 5000 }, { period: "30 days", amount: 15600 }, { period: "Total", amount: 52120 }], component: 'FinancialList' },
-    { id: 'inventory_summary', title: 'Inventory Summary', content: { items: 240, value: 450200 }, component: 'InventorySummary' },
-    { id: 'authorities', title: 'with Authorities', content: [{ type: "GST ITC", amount: 32150 }, { type: "TDS", amount: 18420 }, { type: "Total", amount: 13730 }], component: 'FinancialList', action: () => setActiveScreen('gstr1') },
-    { id: 'recent_entries', title: 'Recent Entries & Edits', content: allPermanentTransactions.slice(0, 3), component: 'EntriesList', className: 'lg:col-span-2' },
-    { id: 'sales_chart', title: 'Sales', content: salesChartData, component: 'SalesChart', className: 'lg:col-span-2', action: () => setActiveScreen('salesReport') },
-  ]);
-  
-  const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : prev === 'dark' ? 'black' : 'light'));
-  const toggleBold = () => setBoldnessLevel(prev => (prev + 1) % boldnessClasses.length);
-  const selectFont = (index) => { setFontIndex(index); };
-  
-  const getBackgroundColor = () => theme === 'light' ? 'bg-[#FFF3E7]' : (theme === 'dark' ? 'bg-slate-900' : 'bg-zinc-950');
-  const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
-  const getCardClasses = (isClickable) => `backdrop-blur-sm border shadow-lg rounded-sm transition-all duration-300 ease-in-out p-6 hover:scale-[1.02] hover:shadow-xl ${isClickable ? 'cursor-pointer' : ''} ${theme === 'light' ? 'bg-white/50 border-gray-200 hover:bg-gray-200/50 hover:text-gray-900' : 'bg-white/5 border-white/10 hover:bg-white/10 hover:text-white'}`;
-  
-  const subtitleProps = {
-    theme,
-    toggleTheme,
-    boldnessLevel,
-    toggleBold,
-    fontFamilies,
-    fontIndex,
-    selectFont,
-    onSearchClick: () => { setInitialCommandQuery(''); setIsCommandPaletteOpen(true); }
-  };
-
-  const FinancialValue = ({ label, value, valueColor = getTextColor() }) => (<div className="flex justify-between items-center py-1"><span className={theme === 'light' ? "text-gray-600" : "text-gray-400"}>{label}</span><span className={`font-semibold ${valueColor}`}>₹{value.toLocaleString()}</span></div>);
-  const EntryItem = ({ type, reference, date, amount, user }) => (
-    <tr className={`border-b ${theme === 'light' ? "border-gray-200" : "border-white/10"} last:border-b-0`}>
-        <td className="py-2 pr-2 text-sm font-semibold">{type}</td>
-        <td className="py-2 pr-2 text-xs">{reference}</td>
-        <td className="py-2 pr-2 text-xs text-right">{date}</td>
-        <td className={`py-2 pr-2 text-sm font-bold text-right`}>₹{amount.toLocaleString()}</td>
-        <td className="py-2 pl-2 text-xs text-right">{user}</td>
-    </tr>
-  );
-  
-  const StatCard = ({ card }) => {
-    const { title, component, content, className, action } = card;
-    const isClickable = !!action;
-    const renderContent = () => {
-      switch (component) {
-        case 'ProfitLoss': return (<><p className="text-3xl font-extrabold text-green-500">₹{content.currentMonth.toLocaleString()}</p><div className="mt-4 text-sm"><p className="text-green-500">+{content.lastMonthChange}% from Jul 25</p><p className="text-red-500">{content.lastYearChange}% from Aug 24</p></div></>);
-        case 'BalanceSheet': return (<><FinancialValue label="Total Assets" value={content.totalAssets} /><FinancialValue label="Total Liabilities" value={content.totalLiabilities} /><div className={`w-full h-px my-2 ${theme === 'light' ? "bg-gray-200" : "bg-white/10"}`}></div><FinancialValue label="Equity" value={content.equity} valueColor={theme === 'light' ? "text-blue-600" : "text-blue-400"} /></>);
-        case 'CashFlow': return (<><FinancialValue label="Cash Inflow" value={content.cashInflow} valueColor="text-green-500" /><FinancialValue label="Cash Outflow" value={content.cashOutflow} valueColor="text-red-500" /><div className={`w-full h-px my-2 ${theme === 'light' ? "bg-gray-200" : "bg-white/10"}`}></div><FinancialValue label="Net Cash Flow" value={content.netCashFlow} valueColor={theme === 'light' ? "text-blue-600" : "text-blue-400"} /></>);
-        case 'Banking': return <div className="space-y-2">{content.map((item, i) => <div key={i} className="flex justify-between items-center"><span>{item.name}</span><span className={`font-semibold ${item.balance < 0 ? 'text-red-500' : ''}`}>₹{item.balance.toLocaleString()}</span></div>)}</div>;
-        case 'FinancialList': return content.map((item, i) => <FinancialValue key={i} label={item.period || item.type} value={item.amount} valueColor={item.period === "Total" || item.type === "Total" ? (theme === 'light' ? "text-blue-600" : "text-blue-400") : (i % 2 === 0 ? "text-green-500" : "text-red-500")} />);
-        case 'EntriesList': return <div className="overflow-x-auto -mx-6 px-6"><table className="w-full text-left"><thead><tr className="text-xs text-gray-400"><th className="pb-2 pr-2 font-semibold">Type</th><th className="pb-2 pr-2 font-semibold">Reference</th><th className="pb-2 pr-2 font-semibold text-right">Date</th><th className="pb-2 pr-2 font-semibold text-right">Amount</th><th className="pb-2 pl-2 font-semibold text-right">User</th></tr></thead><tbody>{content.map((entry, i) => <EntryItem key={i} {...entry} />)}</tbody></table></div>;
-        case 'SalesChart': return (<><p className={`${theme === 'light' ? "text-gray-500" : "text-gray-400"} text-sm mb-4`}>Recent sales trend</p><ResponsiveContainer width="100%" height={200}><LineChart data={content}><CartesianGrid stroke={theme === 'light' ? "#e5e7eb" : "#374151"} strokeDasharray="3 3" /><XAxis dataKey="name" stroke={theme === 'light' ? "#6b7280" : "#9ca3af"} /><YAxis stroke={theme === 'light' ? "#6b7280" : "#9ca3af"} /><Tooltip contentStyle={{ backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(55, 65, 81, 0.8)', border: 'none', color: theme === 'light' ? '#1f2937' : '#f9fafb' }} /><Line type="monotone" dataKey="sales" stroke={theme === 'light' ? "#4f46e5" : "#8b5cf6"} activeDot={{ r: 8 }} /></LineChart></ResponsiveContainer></>);
-        case 'InventorySummary': return <div className="flex justify-around items-center h-full"><div className="text-center"><p className="text-2xl font-bold">{content.items}</p><p className="text-sm text-gray-400">Total Items</p></div><div className="text-center"><p className="text-2xl font-bold">₹{content.value.toLocaleString()}</p><p className="text-sm text-gray-400">Total Value</p></div></div>;
-        default: return null;
-      }
-    };
-    return (<div onClick={action} className={`${getCardClasses(isClickable)} ${className}`}><h3 className={`text-lg font-bold mb-4 ${getTextColor()}`}>{title}</h3>{renderContent()}</div>);
-  };
-  
-  const pageMap = {
-    dashboard: "Home",
-    create: "Create",
-    salesReport: "Sales Report",
-    purchaseReport: "Purchase Report",
-    cashTransactions: "Cash Transactions",
-    salesReturn: "Sales Return - Credit Note", purchaseReturn: "Purchase Return - Debit Note", directExpense: "Direct Expense", balanceSheetReport: "Balance Sheet", plReport: "Profit and Loss Account", banking: "Banking"
-  };
-
-  const renderActiveScreen = () => {
-    switch (activeScreen) {
-        case 'dashboard':
-            return <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">{cards.map((card) => <StatCard key={card.id} card={card} />)}</div>;
-        case 'create':
-            return <CreateJournal onClose={closeSubScreen} theme={theme} initialType={initialJournalType} subtitleProps={subtitleProps} />;
-        case 'salesReport':
-            return <GenericPage title="Sales Report" onClose={closeSubScreen} theme={theme} subtitleProps={subtitleProps}><ReportPage data={mockData.transactions.sales} theme={theme} /></GenericPage>;
-        case 'purchaseReport':
-            return <GenericPage title="Purchase Report" onClose={closeSubScreen} theme={theme} subtitleProps={subtitleProps}><ReportPage data={mockData.transactions.purchases} theme={theme} /></GenericPage>;
-        case 'cashTransactions':
-            return <GenericPage title="Direct Expense Report" onClose={closeSubScreen} theme={theme} subtitleProps={subtitleProps}><ReportPage data={mockData.transactions.directExpense} theme={theme} /></GenericPage>;
-        default:
-            if (pageMap[activeScreen]) {
-                return <GenericPage title={pageMap[activeScreen]} onClose={closeSubScreen} theme={theme} subtitleProps={subtitleProps} />;
-            }
-            return null;
-    }
-  };
-
-  const isSubScreen = activeScreen !== 'dashboard';
-  
-  return (
-    <div className={`min-h-screen flex ${getBackgroundColor()} ${getTextColor()} ${boldnessClasses[boldnessLevel]}`} style={{ fontFamily: fontFamilies[fontIndex] }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;600;700;800&family=Poppins:wght@400;500;600;700;800&family=Lato:wght@400;500;600;700;800&family=Playpen+Sans+Hebrew:wght@400;500;600;700;800&display=swap');`}</style>
-      <Sidebar isExpanded={isSidebarExpanded} onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)} theme={theme} onCreateClick={() => {setInitialCommandQuery(''); setIsCommandPaletteOpen(true);}} setActiveScreen={setActiveScreen}/>
-      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} onSelectCommand={handleSelectCommand} theme={theme} commands={commands} initialQuery={initialCommandQuery}/>
-      
-      <main className={`flex-1 transition-all duration-300 ${isSidebarExpanded ? 'ml-64' : 'ml-20'}`}>
-        {isSubScreen ? (
-          renderActiveScreen()
-        ) : (
-          <div className="p-4 md:p-8">
-            <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-                <h1 className={`text-2xl md:text-3xl font-extrabold ${theme === 'light' ? "text-gray-900" : "text-white"}`}>{pageMap[activeScreen] || 'Dashboard'}</h1>
-                <div className="flex items-center space-x-2 mt-2 md:mt-0">
-                    <Subtitle {...subtitleProps} />
+const Sidebar = ({ isExpanded, onToggle, theme, onCreateClick, setActiveScreen }) => {
+    const getBgColor = () => theme === 'light' ? 'bg-white/80' : (theme === 'dark' ? 'bg-slate-900/80' : 'bg-black/80');
+    const getTextColor = () => theme === 'light' ? 'text-gray-600' : 'text-gray-400';
+    const getHoverColor = () => theme === 'light' ? 'hover:bg-gray-200/50 hover:text-gray-900' : 'hover:bg-white/10 hover:text-white';
+    const getActiveColor = () => theme === 'light' ? 'bg-blue-100 text-blue-600' : 'bg-blue-500/10 text-blue-400';
+    const menuItems = [
+        { text: "Sales", action: () => setActiveScreen('salesReport') },
+        { text: "Purchases", action: () => setActiveScreen('purchaseReport') },
+        { text: "Banking", action: () => setActiveScreen('banking') },
+        { text: "Cash Flow", action: () => setActiveScreen('cashTransactions') },
+        { text: "Direct Expenses", action: () => setActiveScreen('directExpense') },
+        { text: "Indirect Expense", action: () => setActiveScreen('indirectExpense') },
+    ];
+    const MenuItem = ({ text, action, active = false }) => (
+        <a href="#" onClick={(e) => { e.preventDefault(); action(); }} className={`flex items-center gap-3 rounded-md px-3 py-2 transition-all ${getTextColor()} ${getHoverColor()} ${active ? getActiveColor() : ''}`}>
+            <span className={`origin-left duration-200 font-semibold ${!isExpanded && "scale-0"}`}>{text}</span>
+        </a>
+    );
+    return (
+        <aside className={`fixed top-0 left-0 z-40 h-screen border-r backdrop-blur-lg transition-all duration-300 ${isExpanded ? 'w-64' : 'w-20'} ${theme === 'black' ? 'border-gray-800' : (theme === 'light' ? 'border-gray-200' : 'border-white/10')} ${getBgColor()}`}>
+            <nav className="h-full flex flex-col">
+                <div className={`p-4 pb-2 flex ${isExpanded ? 'justify-between' : 'justify-center'} items-center`}>
+                    <h1 onClick={() => setActiveScreen('dashboard')} className={`overflow-hidden transition-all text-2xl font-bold cursor-pointer ${!isExpanded && "w-0"}`}>OSAS 2063</h1>
+                    <button onClick={onToggle} className={`p-2 rounded-md ${getHoverColor()}`}>{isExpanded ? <ChevronsLeft /> : <Menu />}</button>
                 </div>
-            </header>
-            {renderActiveScreen()}
-          </div>
-        )}
-      </main>
+                <div className="flex-1 px-4">
+                    <div className="my-4">
+                        <button onClick={onCreateClick} className={`w-full flex items-center justify-center gap-2 py-2 px-3 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors`}>
+                            <span className={`${!isExpanded && "hidden"}`}>Create</span>
+                        </button>
+                    </div>
+                    <div className="space-y-1">
+                        {menuItems.map(item => <MenuItem key={item.text} text={item.text} action={item.action} />)}
+                    </div>
+                </div>
+            </nav>
+        </aside>
+    );
+}
+
+const GenericPage = ({ title, onClose, theme, children, headerControls }) => {
+    const getBackgroundColor = () => theme === 'light' ? 'bg-white' : (theme === 'dark' ? 'bg-slate-800' : 'bg-zinc-900');
+    const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
+    return (
+      <div className={`w-full h-full flex flex-col ${getBackgroundColor()} ${getTextColor()}`}>
+         <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
+           <h2 className="text-xl font-bold">{title}</h2>
+           <div className="flex items-center gap-2">
+              {headerControls}
+              <button onClick={onClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button>
+           </div>
+         </header>
+         <div className="flex-grow p-6 overflow-y-auto">
+             {children ? children : (
+                 <div className="flex items-center justify-center h-full">
+                     <div className="text-center">
+                         <h3 className="text-2xl font-bold">Coming Soon</h3>
+                         <p className="text-gray-500 mt-2">This page is under construction.</p>
+                     </div>
+                 </div>
+             )}
+         </div>
+       </div>
+		   
+    );
+};
+
+// --- MODULES (would be in src/modules/.../) ---
+
+// From: src/modules/ReportsModule/ReportPage.jsx
+const ReportPage = ({ data, theme }) => (
+    <div className="overflow-x-auto">
+        <table className="w-full text-left">
+            <thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}>
+                <tr>
+                    <th className="p-3 font-semibold">Date</th>
+                    <th className="p-3 font-semibold">Reference</th>
+                    <th className="p-3 font-semibold text-right">Amount</th>
+                    <th className="p-3 font-semibold">User</th>
+                </tr>
+            </thead>
+            <tbody>
+                {data.map(item => (
+                    <tr key={item.id} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
+                        <td className="p-3">{item.date}</td>
+                        <td className="p-3">{item.reference}</td>
+                        <td className="p-3 text-right font-medium">₹{item.amount.toLocaleString()}</td>
+                        <td className="p-3">{item.user}</td>
+                    </tr>
+                ))}
+            </tbody>
+        </table>
     </div>
-  );
+);
+
+// From: src/modules/EntriesModule/CreateJournal.jsx
+const CreateJournal = ({ onClose, theme, initialType = 'sales', headerControls }) => {
+    const [journalType, setJournalType] = useState(initialType);
+
+    const getInitialState = (type) => ({
+        docNo: type === 'sales' ? `INV-${Math.floor(1000 + Math.random() * 9000)}` : `BILL-${Math.floor(1000 + Math.random() * 9000)}`,
+        docDate: new Date().toISOString().split('T')[0],
+        dueDate: new Date(new Date().setDate(new Date().getDate() + (type === 'sales' ? 15 : 30))).toISOString().split('T')[0],
+        party: null,
+        billingAddress: '',
+        shippingAddress: '',
+        placeOfSupply: '',
+        items: [{ productId: '', name: '', hsn: '', qty: 1, rate: 0, amount: 0, taxRate: 18 }],
+        notes: type === 'sales' ? 'Thank you for your business.' : 'Payment to be made within 30 days.',
+        subTotal: 0, cgst: 0, sgst: 0, igst: 0, grandTotal: 0,
+    });
+
+    const [journal, setJournal] = useState(getInitialState(journalType));
+    const [partySearch, setPartySearch] = useState('');
+    const [partyResults, setPartyResults] = useState([]);
+    const [isPartyDropdownOpen, setIsPartyDropdownOpen] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
+    const [showCaution, setShowCaution] = useState(false);
+    
+    const partyInputRef = useRef(null);
+
+    const isSales = journalType === 'sales';
+    const parties = isSales ? mockData.entities.customers : mockData.entities.suppliers;
+    const partyType = isSales ? 'Customer' : 'Supplier';
+    const docType = isSales ? 'Invoice' : 'Bill';
+
+					 
+    useEffect(() => { partyInputRef.current?.focus(); }, [journalType]);
+    useEffect(() => { setIsDirty(JSON.stringify(journal) !== JSON.stringify(getInitialState(journalType))); }, [journal, journalType]);
+
+    useEffect(() => {
+        setJournal(getInitialState(journalType));
+						   
+							
+        setPartySearch(''); setPartyResults([]); setIsPartyDropdownOpen(false);
+    }, [journalType]);
+
+    useEffect(() => {
+        const subTotal = journal.items.reduce((acc, item) => acc + (item.amount || 0), 0);
+        let cgst = 0, sgst = 0, igst = 0;
+        const isInterstate = journal.placeOfSupply.toLowerCase() !== 'tamil nadu';
+        journal.items.forEach(item => {
+            const tax = (item.amount * (item.taxRate || 0)) / 100;
+            if (isInterstate) igst += tax; else { cgst += tax / 2; sgst += tax / 2; }
+        });
+        const grandTotal = subTotal + cgst + sgst + igst;
+        setJournal(prev => ({ ...prev, subTotal, cgst, sgst, igst, grandTotal }));
+    }, [journal.items, journal.placeOfSupply]);
+
+    const handleClose = () => { isDirty ? setShowCaution(true) : onClose(); };
+    const handleConfirmClose = () => { setShowCaution(false); onClose(); };
+    const handleCancelClose = () => setShowCaution(false);
+
+    const handleJournalChange = (e) => { const { name, value } = e.target; setJournal(prev => ({ ...prev, [name]: value })); };
+
+    const handleItemChange = (index, e) => {
+        const { name, value } = e.target;
+        const items = [...journal.items];
+        items[index][name] = value;
+        if (name === 'productId') {
+            const product = mockData.entities.products.find(p => p.id === parseInt(value));
+						  
+            if (product) { items[index] = { ...items[index], name: product.name, hsn: product.hsn, rate: product.rate }; }
+			 
+        }
+        items[index].amount = (parseFloat(items[index].qty) || 0) * (parseFloat(items[index].rate) || 0);
+        setJournal(prev => ({ ...prev, items }));
+    };
+
+    const addItem = () => setJournal(prev => ({ ...prev, items: [...prev.items, { productId: '', name: '', hsn: '', qty: 1, rate: 0, amount: 0, taxRate: 18 }] }));
+    const removeItem = (index) => setJournal(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }));
+
+    const handlePartySearch = (e) => {
+        setPartySearch(e.target.value);
+        if (e.target.value) {
+            setIsPartyDropdownOpen(true);
+            setPartyResults(parties.filter(p => p.name.toLowerCase().includes(e.target.value.toLowerCase())));
+        } else {
+            setIsPartyDropdownOpen(false); setPartyResults([]);
+								
+        }
+    };
+
+    const selectParty = (party) => {
+        setJournal(prev => ({ ...prev, party, billingAddress: party.address, shippingAddress: isSales ? party.address : '', placeOfSupply: party.address.split(',').pop().trim() }));
+        setPartySearch(party.name); setIsPartyDropdownOpen(false);
+    };
+
+    const getBackgroundColor = () => theme === 'light' ? 'bg-white' : (theme === 'dark' ? 'bg-slate-800' : 'bg-zinc-900');
+    const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
+    const getInputClasses = () => `w-full px-3 py-2 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 ${theme === 'light' ? 'bg-gray-100 border border-gray-300 text-gray-900' : 'bg-gray-700 border border-gray-600 text-gray-100'}`;
+    const getLabelClasses = () => `block text-sm font-medium mb-1 ${theme === 'light' ? 'text-gray-600' : 'text-gray-400'}`;
+
+    return (
+        <>
+            <CautionModal isOpen={showCaution} onConfirm={handleConfirmClose} onCancel={handleCancelClose} theme={theme} />
+            <div className={`w-full h-full flex flex-col ${getBackgroundColor()} ${getTextColor()}`}>
+                <header className={`flex items-center justify-between p-4 border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}>
+                    <div className="flex items-center gap-4">
+                        <div className={`flex rounded-md p-1 ${theme === 'light' ? 'bg-gray-200' : 'bg-gray-700'}`}>
+                            <button onClick={() => setJournalType('sales')} className={`px-3 py-1 text-sm font-semibold rounded ${isSales ? (theme === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'bg-slate-800 text-blue-400') : 'text-gray-500 hover:bg-white/5'}`}>Sales</button>
+                            <button onClick={() => setJournalType('purchase')} className={`px-3 py-1 text-sm font-semibold rounded ${!isSales ? (theme === 'light' ? 'bg-white text-blue-600 shadow-sm' : 'bg-slate-800 text-blue-400') : 'text-gray-500 hover:bg-white/5'}`}>Purchase</button>
+                        </div>
+                        <h2 className="text-xl font-bold">New {isSales ? 'Sales' : 'Purchase'} Journal</h2>
+                    </div>
+                     <div className="flex items-center gap-2">
+                        {headerControls}
+                        <button onClick={handleClose} className="p-2 rounded-full hover:bg-gray-500/20 transition-colors"><X size={24} /></button>
+                    </div>
+                </header>
+                <div className="flex-grow p-6 overflow-y-auto">
+										
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                        <div className="md:col-span-2 space-y-4">
+                            <div className="relative">
+                                <label className={getLabelClasses()}>{partyType}</label>
+                                <div className="relative">
+                                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                    <input ref={partyInputRef} type="text" value={partySearch} onChange={handlePartySearch} placeholder={`Search or Add a ${partyType}`} className={`${getInputClasses()} pl-10`} />
+                                </div>
+                                {isPartyDropdownOpen && partyResults.length > 0 && (
+                                    <div className={`absolute z-10 w-full mt-1 rounded-md shadow-lg ${theme === 'light' ? 'bg-white' : 'bg-gray-800'} border ${theme === 'light' ? 'border-gray-200' : 'border-gray-700'}`}>
+                                        {partyResults.map(p => (<div key={p.id} onClick={() => selectParty(p)} className={`px-4 py-2 cursor-pointer hover:bg-blue-500/20`}><p className="font-semibold">{p.name}</p><p className="text-sm text-gray-400">{p.address}</p></div>))}
+                                    </div>
+                                )}
+                            </div>
+                            <div className={`grid grid-cols-1 ${isSales ? 'md:grid-cols-2' : ''} gap-4`}>
+                                <div><label className={getLabelClasses()}>Billing Address</label><textarea name="billingAddress" value={journal.billingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div>
+                                {isSales && <div><label className={getLabelClasses()}>Shipping Address</label><textarea name="shippingAddress" value={journal.shippingAddress} onChange={handleJournalChange} rows="3" className={getInputClasses()}></textarea></div>}
+                            </div>
+                        </div>
+                        <div className="space-y-4">
+                            <div><label className={getLabelClasses()}>{docType} No.</label><input type="text" name="docNo" value={journal.docNo} onChange={handleJournalChange} className={getInputClasses()} /></div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div><label className={getLabelClasses()}>{docType} Date</label><input type="date" name="docDate" value={journal.docDate} onChange={handleJournalChange} className={getInputClasses()} /></div>
+                                <div><label className={getLabelClasses()}>Due Date</label><input type="date" name="dueDate" value={journal.dueDate} onChange={handleJournalChange} className={getInputClasses()} /></div>
+                            </div>
+                            <div><label className={getLabelClasses()}>Place of Supply (State)</label><input type="text" name="placeOfSupply" value={journal.placeOfSupply} onChange={handleJournalChange} placeholder="e.g., Tamil Nadu" className={getInputClasses()} /></div>
+                        </div>
+                    </div>
+									   
+                    <div className="overflow-x-auto"><table className="w-full text-left"><thead className={`${theme === 'light' ? 'bg-gray-50' : 'bg-white/5'}`}><tr><th className="p-3 font-semibold">#</th><th className="p-3 font-semibold w-2/5">Item Details</th><th className="p-3 font-semibold">HSN/SAC</th><th className="p-3 font-semibold">Qty</th><th className="p-3 font-semibold">Rate</th><th className="p-3 font-semibold">Amount</th><th className="p-3 font-semibold"></th></tr></thead><tbody>{journal.items.map((item, index) => (<tr key={index} className={`border-b ${theme === 'light' ? 'border-gray-200' : 'border-white/10'}`}><td className="p-2">{index + 1}</td><td className="p-2"><select name="productId" value={item.productId} onChange={(e) => handleItemChange(index, e)} className={`${getInputClasses()} mb-1`}><option value="">Select Product/Service</option>{mockData.entities.products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select><input type="text" name="name" placeholder="Description" value={item.name} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="text" name="hsn" value={item.hsn} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="qty" value={item.qty} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2"><input type="number" name="rate" value={item.rate} onChange={(e) => handleItemChange(index, e)} className={getInputClasses()} /></td><td className="p-2 text-right pr-4 font-medium">₹{item.amount.toFixed(2)}</td><td className="p-2"><button onClick={() => removeItem(index)} className="p-2 text-red-500 hover:text-red-400"><Trash2 size={18} /></button></td></tr>))}</tbody></table></div>
+                    <button onClick={addItem} className="mt-4 flex items-center gap-2 px-4 py-2 text-sm font-semibold text-blue-500 hover:text-blue-400"><PlusCircle size={18} /> Add another line</button>
+										  
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 pt-6 border-t border-dashed"><div><label className={getLabelClasses()}>Notes / Terms & Conditions</label><textarea name="notes" value={journal.notes} onChange={handleJournalChange} rows="4" className={getInputClasses()}></textarea></div><div className="space-y-2"><div className="flex justify-between items-center"><span className="font-medium">Sub Total:</span><span>₹{journal.subTotal.toFixed(2)}</span></div>{journal.cgst > 0 && (<div className="flex justify-between items-center"><span>CGST:</span><span>₹{journal.cgst.toFixed(2)}</span></div>)}{journal.sgst > 0 && (<div className="flex justify-between items-center"><span>SGST:</span><span>₹{journal.sgst.toFixed(2)}</span></div>)}{journal.igst > 0 && (<div className="flex justify-between items-center"><span>IGST:</span><span>₹{journal.igst.toFixed(2)}</span></div>)}<div className={`flex justify-between items-center text-xl font-bold pt-2 border-t ${theme === 'light' ? 'border-gray-300' : 'border-white/20'}`}><span>Total:</span><span>₹{journal.grandTotal.toFixed(2)}</span></div></div></div>
+                </div>
+                <footer className={`flex items-center justify-end p-4 space-x-3 border-t ${theme === 'light' ? 'border-gray-200 bg-gray-50' : 'border-white/10 bg-white/5'}`}><button onClick={handleClose} className={`px-6 py-2 rounded-md font-semibold transition-colors ${theme === 'light' ? 'bg-gray-200 hover:bg-gray-300' : 'bg-gray-600 hover:bg-gray-500'}`}>Cancel</button><button className="flex items-center gap-2 px-6 py-2 rounded-md font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors"><Save size={18} /> Save Journal</button></footer>
+            </div>
+        </>
+    );
+};
+
+// From: src/modules/DashboardModule/Dashboard.jsx
+const Dashboard = ({ theme, cardsData, setActiveScreen }) => {
+    const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
+    const getCardClasses = (isClickable) => `backdrop-blur-sm border shadow-lg rounded-sm transition-all duration-300 ease-in-out p-6 hover:scale-[1.02] hover:shadow-xl ${isClickable ? 'cursor-pointer' : ''} ${theme === 'light' ? 'bg-white/50 border-gray-200 hover:bg-gray-200/50 hover:text-gray-900' : 'bg-white/5 border-white/10 hover:bg-white/10 hover:text-white'}`;
+    const FinancialValue = ({ label, value, valueColor = getTextColor() }) => (<div className="flex justify-between items-center py-1"><span className={theme === 'light' ? "text-gray-600" : "text-gray-400"}>{label}</span><span className={`font-semibold ${valueColor}`}>₹{value.toLocaleString()}</span></div>);
+    const EntryItem = ({ type, reference, date, amount, user }) => (
+      <tr className={`border-b ${theme === 'light' ? "border-gray-200" : "border-white/10"} last:border-b-0`}>
+          <td className="py-2 pr-2 text-sm font-semibold">{type}</td>
+          <td className="py-2 pr-2 text-xs">{reference}</td>
+          <td className="py-2 pr-2 text-xs text-right">{date}</td>
+          <td className={`py-2 pr-2 text-sm font-bold text-right`}>₹{amount.toLocaleString()}</td>
+          <td className="py-2 pl-2 text-xs text-right">{user}</td>
+      </tr>	
+    );
+    
+    const StatCard = ({ card }) => {
+        const { title, component, content, className, action } = card;
+        const isClickable = !!action;
+        const renderContent = () => {
+          switch (component) {
+            case 'ProfitLoss': return (<><p className="text-3xl font-extrabold text-green-500">₹{content.currentMonth.toLocaleString()}</p><div className="mt-4 text-sm"><p className="text-green-500">+{content.lastMonthChange}% from Jul 25</p><p className="text-red-500">{content.lastYearChange}% from Aug 24</p></div></>);
+            case 'BalanceSheet': return (<><FinancialValue label="Total Assets" value={content.totalAssets} /><FinancialValue label="Total Liabilities" value={content.totalLiabilities} /><div className={`w-full h-px my-2 ${theme === 'light' ? "bg-gray-200" : "bg-white/10"}`}></div><FinancialValue label="Equity" value={content.equity} valueColor={theme === 'light' ? "text-blue-600" : "text-blue-400"} /></>);
+            case 'CashFlow': return (<><FinancialValue label="Cash Inflow" value={content.cashInflow} valueColor="text-green-500" /><FinancialValue label="Cash Outflow" value={content.cashOutflow} valueColor="text-red-500" /><div className={`w-full h-px my-2 ${theme === 'light' ? "bg-gray-200" : "bg-white/10"}`}></div><FinancialValue label="Net Cash Flow" value={content.netCashFlow} valueColor={theme === 'light' ? "text-blue-600" : "text-blue-400"} /></>);
+            case 'Banking': return <div className="space-y-2">{content.map((item, i) => <div key={i} className="flex justify-between items-center"><span>{item.name}</span><span className={`font-semibold ${item.balance < 0 ? 'text-red-500' : ''}`}>₹{item.balance.toLocaleString()}</span></div>)}</div>;
+            case 'FinancialList': return content.map((item, i) => <FinancialValue key={i} label={item.period || item.type} value={item.amount} valueColor={item.period === "Total" || item.type === "Total" ? (theme === 'light' ? "text-blue-600" : "text-blue-400") : (i % 2 === 0 ? "text-green-500" : "text-red-500")} />);
+            case 'EntriesList': return <div className="overflow-x-auto -mx-6 px-6"><table className="w-full text-left"><thead><tr className="text-xs text-gray-400"><th className="pb-2 pr-2 font-semibold">Type</th><th className="pb-2 pr-2 font-semibold">Reference</th><th className="pb-2 pr-2 font-semibold text-right">Date</th><th className="pb-2 pr-2 font-semibold text-right">Amount</th><th className="pb-2 pl-2 font-semibold text-right">User</th></tr></thead><tbody>{content.map((entry, i) => <EntryItem key={i} {...entry} />)}</tbody></table></div>;
+            case 'SalesChart': return (<><p className={`${theme === 'light' ? "text-gray-500" : "text-gray-400"} text-sm mb-4`}>Recent sales trend</p><ResponsiveContainer width="100%" height={200}><LineChart data={content}><CartesianGrid stroke={theme === 'light' ? "#e5e7eb" : "#374151"} strokeDasharray="3 3" /><XAxis dataKey="name" stroke={theme === 'light' ? "#6b7280" : "#9ca3af"} /><YAxis stroke={theme === 'light' ? "#6b7280" : "#9ca3af"} /><Tooltip contentStyle={{ backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.8)' : 'rgba(55, 65, 81, 0.8)', border: 'none', color: theme === 'light' ? '#1f2937' : '#f9fafb' }} /><Line type="monotone" dataKey="sales" stroke={theme === 'light' ? "#4f46e5" : "#8b5cf6"} activeDot={{ r: 8 }} /></LineChart></ResponsiveContainer></>);
+            case 'InventorySummary': return <div className="flex justify-around items-center h-full"><div className="text-center"><p className="text-2xl font-bold">{content.items}</p><p className="text-sm text-gray-400">Total Items</p></div><div className="text-center"><p className="text-2xl font-bold">₹{content.value.toLocaleString()}</p><p className="text-sm text-gray-400">Total Value</p></div></div>;
+            default: return null;
+          }
+        };
+        return (<div onClick={action} className={`${getCardClasses(isClickable)} ${className}`}><h3 className={`text-lg font-bold mb-4 ${getTextColor()}`}>{title}</h3>{renderContent()}</div>);
+    };
+
+    return <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">{cardsData.map((card) => <StatCard key={card.id} card={card} />)}</div>;
+}
+// --- MAIN APP (would be src/App.jsx) ---
+
+const App = () => {
+    // --- State Management ---
+    const [theme, setTheme] = useState('black');
+    const [boldnessLevel, setBoldnessLevel] = useState(2);
+    const [fontIndex, setFontIndex] = useState(0);
+    const [activeScreen, setActiveScreen] = useState('dashboard');
+    const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+    const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+    const [initialCommandQuery, setInitialCommandQuery] = useState('');
+    const [initialJournalType, setInitialJournalType] = useState('sales');
+
+    // --- Constants & Derived State ---
+    const boldnessClasses = ['font-normal', 'font-medium', 'font-semibold', 'font-bold', 'font-extrabold'];
+    const fontFamilies = ['Inter', 'Roboto', 'Poppins', 'Lato', 'Playpen Sans Hebrew'];
+    const pageMap = {
+        dashboard: "Home", create: "Create", salesReport: "Sales Report", purchaseReport: "Purchase Report",
+        cashTransactions: "Cash Transactions", salesReturn: "Sales Return - Credit Note", purchaseReturn: "Purchase Return - Debit Note",
+        directExpense: "Direct Expense", balanceSheetReport: "Balance Sheet", plReport: "Profit and Loss Account", banking: "Banking"
+    };
+    
+    // --- Actions & Event Handlers ---
+    const toggleTheme = () => setTheme(prev => (prev === 'light' ? 'dark' : prev === 'dark' ? 'black' : 'light'));
+    const toggleBold = () => setBoldnessLevel(prev => (prev + 1) % boldnessClasses.length);
+    const selectFont = (index) => setFontIndex(index);
+    const closeSubScreen = () => setActiveScreen('dashboard');
+    const openCreateScreen = (type) => { setInitialJournalType(type); setActiveScreen('create'); };
+
+    const handleSelectCommand = (command) => { command.action(); setIsCommandPaletteOpen(false); };
+    
+    // --- Data Definitions for Components ---
+    const salesChartData = mockData.transactions.sales.map(sale => ({ name: new Date(sale.date).toLocaleString('default', { month: 'short' }), sales: sale.amount })).reverse();
+    const dashboardCards = [
+        { id: 'profit_and_loss', title: 'Profit & Loss', content: { currentMonth: 24580, lastMonthChange: 12.5, lastYearChange: -7.5 }, component: 'ProfitLoss', action: () => setActiveScreen('plReport') },
+        { id: 'balance_sheet', title: 'Balance Sheet', content: { totalAssets: 50000, totalLiabilities: 40000, equity: 10000 }, component: 'BalanceSheet', action: () => setActiveScreen('balanceSheetReport') },
+        { id: 'cash_flow', title: 'Cash Flow', content: { cashInflow: 32150, cashOutflow: 18420, netCashFlow: 13730 }, component: 'CashFlow', action: () => setActiveScreen('cashTransactions') },
+        { id: 'banking', title: 'Banking', content: [{ name: "SBI OD", balance: -1212540 }, { name: "Axis CA", balance: 51560 }], component: 'Banking' },
+        { id: 'receivables', title: 'Receivables', content: [{ period: "7 days", amount: 5000 }, { period: "30 days", amount: 15600 }, { period: "Total", amount: 52120 }], component: 'FinancialList' },
+        { id: 'payables', title: 'Payables', content: [{ period: "7 days", amount: 5000 }, { period: "30 days", amount: 15600 }, { period: "Total", amount: 52120 }], component: 'FinancialList' },
+        { id: 'inventory_summary', title: 'Inventory Summary', content: { items: 240, value: 450200 }, component: 'InventorySummary' },
+        { id: 'authorities', title: 'with Authorities', content: [{ type: "GST ITC", amount: 32150 }, { type: "TDS", amount: 18420 }, { type: "Total", amount: 13730 }], component: 'FinancialList', action: () => setActiveScreen('gstr1') },
+        { id: 'recent_entries', title: 'Recent Entries & Edits', content: allPermanentTransactions.slice(0, 3), component: 'EntriesList', className: 'lg:col-span-2' },
+        { id: 'sales_chart', title: 'Sales', content: salesChartData, component: 'SalesChart', className: 'lg:col-span-2', action: () => setActiveScreen('salesReport') },
+    ];
+    const commands = [
+        { label: "Sales Journal", category: "Create New", action: () => openCreateScreen('sales') },
+        { label: "Purchase Journal", category: "Create New", action: () => openCreateScreen('purchase') },
+        { label: "Sales Return - Credit Note", category: "Create New", action: () => setActiveScreen('salesReturn') },
+        { label: "Purchase Return - Debit Note", category: "Create New", action: () => setActiveScreen('purchaseReturn') },
+        { label: "Direct Expense", category: "Create New", action: () => setActiveScreen('directExpense') },
+        { label: "Balance Sheet", category: "Reports", action: () => setActiveScreen('balanceSheetReport') },
+        { label: "Profit and Loss Account", category: "Reports", action: () => setActiveScreen('plReport') },
+        { label: "Sales Report", category: "Reports", action: () => setActiveScreen('salesReport') },
+        { label: "Purchase Report", category: "Reports", action: () => setActiveScreen('purchaseReport') },
+        { label: "Cash Transactions", category: "Reports", action: () => setActiveScreen('cashTransactions') },
+    ];
+
+    // --- Side Effects (Hooks) ---
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            if (e.key === 'Escape') {
+                if (isCommandPaletteOpen) setIsCommandPaletteOpen(false);
+                else if (activeScreen !== 'dashboard') closeSubScreen();
+                return;
+            }
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setInitialCommandQuery(''); setIsCommandPaletteOpen(true); return; }
+            const targetNodeName = e.target.nodeName; const isTypingInInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes(targetNodeName);
+            if (!isCommandPaletteOpen && e.key.match(/^[a-zA-Z0-9]$/) && !isTypingInInput && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setInitialCommandQuery(e.key); setIsCommandPaletteOpen(true); }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isCommandPaletteOpen, activeScreen]);
+
+    // --- Props for Sub-components ---
+    const headerControlProps = {
+      theme, toggleTheme, boldnessLevel, toggleBold,
+      fontFamilies, fontIndex, selectFont,
+      onSearchClick: () => { setInitialCommandQuery(''); setIsCommandPaletteOpen(true); }
+    };
+    
+    // --- Render Logic ---
+    const renderActiveScreen = () => {
+        const headerControls = <PageHeader {...headerControlProps} />;
+        switch (activeScreen) {
+            case 'dashboard':
+                return (
+                    <div className="p-4 md:p-8">
+                        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+                            <h1 className={`text-2xl md:text-3xl font-extrabold ${theme === 'light' ? "text-gray-900" : "text-white"}`}>Home</h1>
+                            <div className="flex items-center space-x-2 mt-2 md:mt-0">{headerControls}</div>
+                        </header>
+                        <Dashboard theme={theme} cardsData={dashboardCards} setActiveScreen={setActiveScreen} />
+                    </div>
+                );
+            case 'create':
+                return <CreateJournal onClose={closeSubScreen} theme={theme} initialType={initialJournalType} headerControls={headerControls} />;
+            case 'salesReport':
+                return <GenericPage title="Sales Report" onClose={closeSubScreen} theme={theme} headerControls={headerControls}><ReportPage data={mockData.transactions.sales} theme={theme} /></GenericPage>;
+            case 'purchaseReport':
+                return <GenericPage title="Purchase Report" onClose={closeSubScreen} theme={theme} headerControls={headerControls}><ReportPage data={mockData.transactions.purchases} theme={theme} /></GenericPage>;
+            case 'cashTransactions':
+                return <GenericPage title="Direct Expense Report" onClose={closeSubScreen} theme={theme} headerControls={headerControls}><ReportPage data={mockData.transactions.directExpense} theme={theme} /></GenericPage>;
+            default:
+                if (pageMap[activeScreen]) {
+                    return <GenericPage title={pageMap[activeScreen]} onClose={closeSubScreen} theme={theme} headerControls={headerControls} />;
+                }
+                return null; // Or a 404 component
+        }
+    };
+
+    const getBackgroundColor = () => theme === 'light' ? 'bg-[#FFF3E7]' : (theme === 'dark' ? 'bg-slate-900' : 'bg-zinc-950');
+    const getTextColor = () => theme === 'light' ? 'text-gray-800' : 'text-gray-100';
+		
+    return (
+        <div className={`min-h-screen flex ${getBackgroundColor()} ${getTextColor()} ${boldnessClasses[boldnessLevel]}`} style={{ fontFamily: fontFamilies[fontIndex] }}>
+            <style>{`@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&family=Poppins:wght@400;500;600;700&family=Lato:wght@400;700&family=Playpen+Sans+Hebrew:wght@400;500;600;700;800&display=swap');`}</style>
+            
+            <Sidebar 
+                isExpanded={isSidebarExpanded} 
+                onToggle={() => setIsSidebarExpanded(!isSidebarExpanded)} 
+                theme={theme} 
+                onCreateClick={() => {setInitialCommandQuery(''); setIsCommandPaletteOpen(true);}} 
+                setActiveScreen={setActiveScreen}
+            />
+            
+            <CommandPalette 
+                isOpen={isCommandPaletteOpen} 
+                onClose={() => setIsCommandPaletteOpen(false)} 
+                onSelectCommand={handleSelectCommand} 
+                theme={theme} 
+                commands={commands} 
+                initialQuery={initialCommandQuery}
+            />
+      
+            <main className={`flex-1 transition-all duration-300 ${isSidebarExpanded ? 'ml-64' : 'ml-20'}`}>
+                {renderActiveScreen()}
+            </main>
+		  
+        </div>
+		  
+    );
 };
 
 export default App;
